@@ -22,11 +22,11 @@ jobs:
       - name: Test with pytest  
         run: |  
           coverage run -m pytest  -v -s  
-      # - name: Generate Coverage Report  
-      #   run: |  
-      #     coverage report -m
-      # - name: Upload coverage reports to Codecov
-      #   uses: codecov/codecov-action@v3
-      #   env:
-      #      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Generate Coverage Report  
+        run: |  
+          coverage report -m
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
