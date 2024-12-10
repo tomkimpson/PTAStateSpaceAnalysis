@@ -1,12 +1,10 @@
 # PTAStateSpaceAnalysis
 
-![Tests](https://github.com/tomkimpson/PTAStateSpaceAnalysis/.github/workflows/run_test.yml/badge.svg)
+![Tests](https://github.com/tomkimpson/PTAStateSpaceAnalysis/actions/workflows/run_test.yml/badge.svg)
 
-<!-- [![codecov](https://codecov.io/gh/tomkimpson/KalmanPhasePTA/graph/badge.svg?token=Y2TSEX32BI)](https://codecov.io/gh/tomkimpson/KalmanPhasePTA)
 
-![Codecov]()
-* code cov 
-* docs -->
+[![codecov](https://codecov.io/gh/tomkimpson/PTAStateSpaceAnalysis/graph/badge.svg?token=2PEOHCFV1K)](https://codecov.io/gh/tomkimpson/PTAStateSpaceAnalysis)
+
 
 Welcome to the `PTAStateSpaceAnalysis` repo.
 
