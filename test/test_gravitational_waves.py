@@ -1,4 +1,4 @@
-#This is the test file for py_src/gravitational_waves.py 
+#This is the test file for src/gravitational_waves.py 
 from src import gravitational_waves
 import numpy as np 
 
@@ -102,7 +102,7 @@ def test_h_amplitudes():
     assert hx == 0.0
 
 
-    #...and also if iota is extremal    
+    #...and also if iota is extremal (zero or pi/2)  
     h = 1 
     iota = np.pi/2
     hp,hx = gravitational_waves._h_amplitudes(h,iota)

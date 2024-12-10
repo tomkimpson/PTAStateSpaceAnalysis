@@ -53,6 +53,29 @@ def _polarisation_tensors(m, n):
 
 
 
+def polarisation_tensors(m, n):
+    x, y = m.shape
+
+    #See e.g. https://stackoverflow.com/questions/77319805/vectorization-of-complicated-matrix-calculation-in-python
+    ma = m.reshape(x, 1, y)
+    mb = m.reshape(1, x, y)
+
+    na = n.reshape(x, 1, y)
+    nb = n.reshape(1, x, y)
+
+    e_plus = ma*mb -na*nb
+    e_cross = ma*nb +na*mb
+
+    return e_plus,e_cross
+
+
+
+
+
+
+
+
+
 
 #@njit(fastmath=True)
 def _h_amplitudes(h,ι): 
