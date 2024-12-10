@@ -54,6 +54,17 @@ def _polarisation_tensors(m, n):
 
 
 def polarisation_tensors(m, n):
+    """Alternative method to calculate the two polarisation tensors e_+, e_x.
+
+    Args:
+        m (ndarray): A vector of length 3, corresponding to a principal axis of the GW
+        n (ndarray): A vector of length 3, corresponding to a principal axis of the GW
+
+    Returns:
+        e_plus  (ndarray): A 3x3 array corresponding to the + polarisation
+        e_cross (ndarray): A 3x3 array corresponding to the x polarisation
+
+    """
     x, y = m.shape
 
     #See e.g. https://stackoverflow.com/questions/77319805/vectorization-of-complicated-matrix-calculation-in-python

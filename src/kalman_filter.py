@@ -1,12 +1,12 @@
+"""Module which implements Kalman filter algorithm."""
+
 import numpy as np 
 import scipy
-import sys
 
 
 
 class ExtendedKalmanFilter:
-    """
-    A class to implement the extended (non-linear) Kalman filter.
+    """A class to implement the extended (non-linear) Kalman filter.
 
     It takes four initialisation arguments:
 
@@ -23,12 +23,7 @@ class ExtendedKalmanFilter:
     """
 
     def __init__(self,Model,Observations,x0,P0,**kwargs):
-
-        """
-        Initialize the class. 
-        """
-
-   
+        """Initialize the class."""
         self.model        = Model
         self.observations = Observations
 
@@ -115,8 +110,7 @@ class ExtendedKalmanFilter:
 
     
     def run(self,parameters):
-
-
+        """Run the Kalman filter and return a likelihood."""
         #Initialise x and P
         x = self.x0 
         P = self.P0

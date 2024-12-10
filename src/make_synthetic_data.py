@@ -1,5 +1,5 @@
 
-"""Module used to generate fake, synthetic frequency timeseries for testing the pipeline"""
+"""Module used to generate fake, synthetic frequency timeseries for testing the pipeline."""
 
 
 from numpy import sin, cos
@@ -8,16 +8,12 @@ import pandas as pd
 
 
 
-from pathlib import Path
-import os 
 
 
 
 
 class Pulsars:
-
-    """
-    A class which defines the pulsars which make up the PTA
+    """A class which defines the pulsars which make up the PTA.
 
     It takes the following arguments:
 
@@ -33,11 +29,8 @@ class Pulsars:
 
     """
 
-
     def __init__(self,pulsar_file,γp,dt_weeks,Tobs_years):
-
-
-
+        """Initialize the class."""
         #Define some universal constants
         pc = 3e16     # parsec in m
         c  = 3e8      # speed of light in m/s
