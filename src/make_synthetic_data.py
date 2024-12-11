@@ -1,10 +1,83 @@
 
 """Module used to generate fake, synthetic frequency timeseries for testing the pipeline."""
-
-
 from numpy import sin, cos
 import numpy as np 
 import pandas as pd 
+import bilby 
+import logging 
+
+#Set logging level for this module
+logging.basicConfig(level=logging.INFO)
+
+class BH_population:
+    """ 
+    Calculate the population of black holes which constitute the stochastic GW background.
+    This involves randomly drawing 7 GW parameters (Ω,h,φ0,ψ,ι,α,δ) for M sources. 
+    We use the bilby package to do do the random sampling; note that bilby does not currently let a user seed the sampling process
+    Se e.g. https://git.ligo.org/lscsoft/bilby/-/blob/master/bilby/core/prior/analytical.py
+    """
+
+
+    def __init__(self,Ω_power_law_index=None,Ω_min=None,Ω_max=None,M=None,parameters_dictionary=None):
+
+        #Assign arguments to class
+        self.M = M
+        logging.info(f'Generating a GW signal with M = {M}') 
+     
+
+        if (M == 1) and (parameters_dictionary is not None): #user specifies the parameters themselves by passing a dictionary
+            
+            #Manually extract from the dictionary and make them attributes of the class - easier to handle later
+            self.Ω = parameters_dictionary['Ω']
+            self.h = parameters_dictionary['h']
+            self.φ0 = parameters_dictionary['φ0']
+            self.ψ = parameters_dictionary['ψ']
+            self.ι = parameters_dictionary['ι']
+            self.δ = parameters_dictionary['δ']
+            self.α = parameters_dictionary['α']
+
+        else: # sample randomly
+
+            #Assign arguments to class
+            self.alpha = Ω_power_law_index
+            self.Ω_min = Ω_min
+            self.Ω_max = Ω_max
+
+            #Define priors for GW parameters and sample
+            priors  = self._gw_priors()
+            samples = priors.sample(M)
+
+            #Manually extract from the dictionary and make them attributes of the class - easier to handle later
+            self.Ω = samples['Ω']
+            self.h = samples['h']
+            self.φ0 = samples['φ0']
+            self.ψ = samples['ψ']
+            self.ι = samples['ι']
+            self.δ = samples['δ']
+            self.α = samples['α']
+
+
+  
+
+
+    def _gw_priors(self):
+        """
+        Define the priors on the 7 GW parameters.
+        Pass 3 arguments: Ω_power_law_index,Ω_min,Ω_max which define the power law prior on Ω
+        Note that h has a unit delta function prior - all sources have the same unit amplitude
+        """
+
+
+        priors = bilby.core.prior.PriorDict()
+        priors['Ω']  = bilby.core.prior.PowerLaw(alpha=self.alpha,minimum=self.Ω_min,maximum=self.Ω_max)
+        priors['h']  = bilby.core.prior.DeltaFunction(1.0)
+        priors['φ0'] = bilby.core.prior.Uniform(0.0, 2*np.pi)
+        priors['ψ']  = bilby.core.prior.Uniform(0.0, np.pi)
+        priors['ι']  = bilby.core.prior.Sine(0.0, np.pi)
+        priors['δ']  = bilby.core.prior.Cosine(-np.pi/2, np.pi/2)
+        priors['α']  = bilby.core.prior.Uniform(0.0, 2*np.pi)
+
+        return priors
 
 
 
@@ -19,7 +92,7 @@ class Pulsars:
 
         `pulsar_file`: a path to a CSV which holds the ephemeris parameters of N pulsars  
 
-        `γp`: A float which specifies the (inverse) mean reversion timescale of the Ornstein Uhlenbeck process. All pulsars take the same value
+        `γp`: A float which specifies the (inverse) mean reversion timescale of the Ornstein Uhlenbeck process. All pulsars take the same value of γp
 
         `dt_weeks`: A float which specifies how frequently the pulsars are observed. All pulsars are observed at the same times.
 
@@ -51,8 +124,8 @@ class Pulsars:
         self.q         = _unit_vector(np.pi/2.0 -self.δ, self.α) # 3 rows, N columns
 
 
-
-        self.γp        = np.ones_like(self.f) * γp   # for every pulsar let γ be the same 
+        #For every pulsar let γ be the same 
+        self.γp        = np.ones_like(self.f) * γp   
 
 
         #Some useful reshaping for vectorised calculations later
