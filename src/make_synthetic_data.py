@@ -14,7 +14,7 @@ class BH_population:
     Calculate the population of black holes which constitute the stochastic GW background.
     This involves randomly drawing 7 GW parameters (Ω,h,φ0,ψ,ι,α,δ) for M sources. 
     We use the bilby package to do do the random sampling; note that bilby does not currently let a user seed the sampling process
-    Se e.g. https://git.ligo.org/lscsoft/bilby/-/blob/master/bilby/core/prior/analytical.py
+    See e.g. https://git.ligo.org/lscsoft/bilby/-/blob/master/bilby/core/prior/analytical.py
     """
 
 
@@ -133,17 +133,35 @@ class Pulsars:
 
 
 
-        #and the cross products
-        q_products = np.zeros((self.Npsr ,9))
-        k = 0
-        for n in range(self.Npsr ):
-            k = 0
-            for i in range(3):
-                for j in range(3):
-                    q_products[n,k] = self.q[n,i]*self.q[n,j]
-                    k+=1
-        q_products = q_products.T
-        self.q_products=q_products
+      
+        # #It is useful in compute_a to have the products q1*q1, q1*q2 precomputed
+        # #This lets us write h_ij q^i q&j as a single dot product
+        # #There is probably a cleaner way to do this using np.einsum
+        # #I am sure there is a better way to do this
+        # self.q_products = np.zeros((self.Npsr,9))
+        # k = 0
+        # for n in range(self.Npsr):
+        #     k = 0
+        #     for i in range(3):
+        #         for j in range(3):
+        #             self.q_products[n,k] = self.q[n,i]*self.q[n,j]                    
+        #             k+=1
+        
+        # self.q_products = self.q_products.T # lazy transpose here to enable correct shapes for dot products later
+
+
+
+
+        # q_products = np.zeros((self.Npsr ,9))
+        # k = 0
+        # for n in range(self.Npsr ):
+        #     k = 0
+        #     for i in range(3):
+        #         for j in range(3):
+        #             q_products[n,k] = self.q[n,i]*self.q[n,j]
+        #             k+=1
+        # q_products = q_products.T
+        # self.q_products=q_products
 
 
 
@@ -192,7 +210,7 @@ def _unit_vector(Θ,φ):
     qx = sin(Θ) * cos(φ)
     qy = sin(Θ) * sin(φ)
     qz = cos(Θ)
-    return np.array([qx, qy, qz]).T
+    return np.array([qx, qy, qz]).T #This has shape (N,3)
 
 
 
