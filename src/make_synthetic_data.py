@@ -12,14 +12,15 @@ logging.basicConfig(level=logging.INFO)
 class BH_population:
     """ 
     Calculate the population of black holes which constitute the stochastic GW background.
+
     This involves randomly drawing 7 GW parameters (Ω,h,φ0,ψ,ι,α,δ) for M sources. 
-    We use the bilby package to do do the random sampling; note that bilby does not currently let a user seed the sampling process
-    See e.g. https://git.ligo.org/lscsoft/bilby/-/blob/master/bilby/core/prior/analytical.py
+    We use the bilby package to do do the random sampling; note that bilby does not currently let a user seed the sampling process.
+    See e.g. https://git.ligo.org/lscsoft/bilby/-/blob/master/bilby/core/prior/analytical.py.
+
     """
-
-
+    
     def __init__(self,Ω_power_law_index=None,Ω_min=None,Ω_max=None,M=None,parameters_dictionary=None):
-
+        """Initialize the class."""
         #Assign arguments to class
         self.M = M
         logging.info(f'Generating a GW signal with M = {M}') 
@@ -61,13 +62,11 @@ class BH_population:
 
 
     def _gw_priors(self):
-        """
-        Define the priors on the 7 GW parameters.
-        Pass 3 arguments: Ω_power_law_index,Ω_min,Ω_max which define the power law prior on Ω
-        Note that h has a unit delta function prior - all sources have the same unit amplitude
-        """
+        """Define the priors on the 7 GW parameters.
 
-
+        Pass 3 arguments: Ω_power_law_index,Ω_min,Ω_max which define the power law prior on Ω.
+        Note that h has a unit delta function prior - all sources have the same unit amplitude.
+        """
         priors = bilby.core.prior.PriorDict()
         priors['Ω']  = bilby.core.prior.PowerLaw(alpha=self.alpha,minimum=self.Ω_min,maximum=self.Ω_max)
         priors['h']  = bilby.core.prior.DeltaFunction(1.0)

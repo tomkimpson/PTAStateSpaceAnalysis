@@ -57,37 +57,19 @@ def _principal_axes(θ,φ,ψ,M):
 
 #@njit(fastmath=True)
 def _polarisation_tensors(m, n):
-    """Calculate the two polarisation tensors e_+, e_x.
-    Based off https://stackoverflow.com/questions/77319805/vectorization-of-complicated-matrix-calculation-in-python
-
+    """Calculate the two polarisation tensors e_+, e_x. See equation 2a,2d of https://journals.aps.org/prd/abstract/10.1103/PhysRevD.81.104008.
+    
     Args:
-        m (ndarray): A vector of length 3, corresponding to a principal axis of the GW
-        n (ndarray): A vector of length 3, corresponding to a principal axis of the GW
+        m (ndarray): A vector of length (M,3), corresponding to a principal axis of the GW
+        n (ndarray): A vector of length (M,3), corresponding to a principal axis of the GW
 
     Returns:
-        e_plus  (ndarray): A 3x3 array corresponding to the + polarisation
-        e_cross (ndarray): A 3x3 array corresponding to the x polarisation
+        e_plus  (ndarray): A 3x3(xM) array corresponding to the + polarisation
+        e_cross (ndarray): A 3x3(xM) array corresponding to the x polarisation
 
     """
-    # # For e_+,e_x, Tensordot might be a bit faster, but list comprehension has JIT support
-    # # Note these are 1D arrays, rather than the usual 2D struture
-    # e_plus              = np.array([m[i]*m[j]-n[i]*n[j] for i in range(3) for j in range(3)]) 
-    # e_cross             = np.array([m[i]*n[j]+n[i]*m[j] for i in range(3) for j in range(3)])
-
-
-    # # Shapes become (3, K)
-    # m, n = m.T, n.T
-
-
-
-    # Shapes become:
-    # (3, 1, K)
-    # (1, 3, K)
-    # ========= *
-    # (3, 3, K)
     e_plus = m[:, None] * m[None, :] - n[:, None] * n[None, :]
     e_cross = m[:, None] * n[None, :] + n[:, None] * m[None, :]
-
     
     return e_plus,e_cross
 
@@ -101,11 +83,11 @@ class GW:
     Arguments:
         `universe_i`: the realisation of the universe, i.e. the BH-BH population
         `PTA`: The PTA configuration used to observe the GWs from the BH-BH population
+
     """
 
     def __init__(self,universe_i,PTA):
         """Initialize the class."""
-
         #Gw parameters
         self.Ω=universe_i.Ω
         self.δ = universe_i.δ
@@ -131,11 +113,8 @@ class GW:
 
 
 
-    """ 
-    Sole function of the class
-    """
     def compute_a(self):
-
+        """Compute the a(t) timeseries."""
         m,n                 = _principal_axes(np.pi/2.0 - self.δ,self.α,self.ψ) # Get the principal axes. declination converted to a latitude 0-π. Shape (K,3)   
         gw_direction        = np.cross(m,n).T                                     # The direction of each source. Shape (3,M). Transpose to enable dot product with q vector
         e_plus,e_cross      = _polarisation_tensors(m.T,n.T)                     # The polarization tensors. Shape (3,3,K)
