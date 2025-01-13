@@ -15,6 +15,7 @@ class BH_population:
 
     This involves randomly drawing 7 GW parameters (Ω,h,φ0,ψ,ι,α,δ) for M sources. 
     We use the bilby package to do do the random sampling; note that bilby does not currently let a user seed the sampling process.
+    In the future it woukd be better to define our own PowerLaw, Sine, etc. distributions
     See e.g. https://git.ligo.org/lscsoft/bilby/-/blob/master/bilby/core/prior/analytical.py.
 
     """
@@ -26,7 +27,7 @@ class BH_population:
         logging.info(f'Generating a GW signal with M = {M}') 
      
 
-        if (M == 1) and (parameters_dictionary is not None): #user specifies the parameters themselves by passing a dictionary
+        if (parameters_dictionary is not None): #user specifies the parameters themselves by passing a dictionary
             
             #Manually extract from the dictionary and make them attributes of the class - easier to handle later
             self.Ω = parameters_dictionary['Ω']
@@ -160,7 +161,12 @@ class Pulsars:
         #             q_products[n,k] = self.q[n,i]*self.q[n,j]
         #             k+=1
         # q_products = q_products.T
-        # self.q_products=q_products
+        # self.q_products=q_products\
+
+
+        
+
+       
 
 
 

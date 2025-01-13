@@ -11,7 +11,7 @@ def test_reasonable_pulsar_values(request):
     root = request.config.rootdir
 
 
-    PTA = make_synthetic_data.Pulsars(pulsar_file=f'{root}/data/NANOGrav_pulsars.csv',
+    PTA = make_synthetic_data.Pulsars(pulsar_file=f'{root}/data/NANOGrav_pulsars.csv', #todo, code this path properly
                                       γp = 1e-13,
                                       dt_weeks = 1,Tobs_years=10)                                     # setup the PTA
 

@@ -62,8 +62,6 @@ class ExtendedKalmanFilter:
         f_function = self.model.f(x,parameters['g'])
 
 
-
-
         F_jacobian = self.model.F_jacobian(x,parameters['g'])
         Q          = self.model.Q_matrix(x,parameters['σp'])
     

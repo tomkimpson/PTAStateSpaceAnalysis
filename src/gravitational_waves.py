@@ -24,21 +24,24 @@ def _h_amplitudes(h,ι):
 
 
 # @njit(fastmath=True)
-def _principal_axes(θ,φ,ψ,M):
+def _principal_axes(θ,φ,ψ):
     """Calculate the two principal axes of the GW propagation.
 
     Args:
         θ (ndarray): An array of length M, the polar angle of the M GW sources in radians 
         φ (ndarray): An array of length M, the azimuthal angle of the GW source in radians 
         ψ (ndarray): An array of length M, the polarisation angle of the GW source in radians 
-        M (int)    : How many GW sources are there?
+
 
     Returns:
         m (ndarray):  A vector of length 3, corresponding to a principal axis of the GW
         n (ndarray):  A vector of length 3, corresponding to a principal axis of the GW
 
     """
-    m = np.zeros((M,3)) 
+    
+    M = len(θ)  #: How many GW sources are there? 
+
+    m = np.zeros((M,3)) #Watch out! lower case m is different from upper case M. Lets change the notation to avoid any confusion. todo
     m[:,0] = sin(φ)*cos(ψ) - sin(ψ)*cos(φ)*cos(θ)
     m[:,1] = -(cos(φ)*cos(ψ) + sin(ψ)*sin(φ)*cos(θ))
     m[:,2] = sin(ψ)*sin(θ)
@@ -89,19 +92,18 @@ class GW:
     def __init__(self,universe_i,PTA):
         """Initialize the class."""
         #Gw parameters
-        self.Ω=universe_i.Ω
-        self.δ = universe_i.δ
-        self.α = universe_i.α
-        self.ψ = universe_i.ψ
-        self.h=universe_i.h
-        self.ι = universe_i.ι
+        self.Ω  = universe_i.Ω
+        self.δ  = universe_i.δ
+        self.α  = universe_i.α
+        self.ψ  = universe_i.ψ
+        self.h  = universe_i.h
+        self.ι  = universe_i.ι
         self.φ0 = universe_i.φ0
   
         #PSR related quantities
-        self.q = PTA.q #.T
-        #self.q_products = PTA.q_products
+        self.q = PTA.q 
         self.t = PTA.t
-        self.d=PTA.d
+        self.d = PTA.d
 
         #Shapes
         self.M,self.T,self.N = universe_i.M,len(PTA.t),PTA.Npsr 
@@ -109,38 +111,32 @@ class GW:
 
 
 
-
-
-
-
     def compute_a(self):
         """Compute the a(t) timeseries."""
-        m,n                 = _principal_axes(np.pi/2.0 - self.δ,self.α,self.ψ) # Get the principal axes. declination converted to a latitude 0-π. Shape (K,3)   
+        m,n                 = _principal_axes(np.pi/2.0 - self.δ,self.α,self.ψ)   # Get the principal axes. declination converted to a latitude 0-π. Shape (K,3)   
         gw_direction        = np.cross(m,n).T                                     # The direction of each source. Shape (3,M). Transpose to enable dot product with q vector
-        e_plus,e_cross      = _polarisation_tensors(m.T,n.T)                     # The polarization tensors. Shape (3,3,K)
-        hp,hx               = _h_amplitudes(self.h,self.ι)                       # The plus and cross amplitudes. Can also do h_amplitudes(h*Ω**(2/3),ι) to add a frequency dependence
+        e_plus,e_cross      = _polarisation_tensors(m.T,n.T)                      # The polarization tensors. Shape (3,3,K)
+        hp,hx               = _h_amplitudes(self.h,self.ι)                        # The plus and cross amplitudes. Can also do h_amplitudes(h*Ω**(2/3),ι) to add a frequency dependence
         dot_product         = 1.0 + self.q @ gw_direction #.T                     # Shape (N,M)
 
 
         #Amplitudes
-        Hij_plus             = hp * e_plus #.reshape(9,self.M).T # shape (3,3,M) ---> (9,M)---> (M,9). Makes it easier to later compute the sum q^i q^j H_ij
-        Hij_cross            = hx * e_cross #.reshape(9,self.M).T 
+        Hij_plus             = hp * e_plus 
+        Hij_cross            = hx * e_cross 
 
        
+    
 
 
         Fplus = np.einsum('ijm, in, jn -> mn', Hij_plus, self.q.T, self.q.T)
         Fcross = np.einsum('ijm, in, jn -> mn', Hij_cross, self.q.T, self.q.T)
 
 
-        #Fplus = np.dot(Hij_plus,self.q_products) #(M,Npsr)
-        #Fcross = np.dot(Hij_cross,self.q_products) #(M,Npsr)
-
 
         #Phases
-        earth_term_phase  = np.outer(self.Ω,self.t).T + + self.φ0 # Shape(T,M)
+        earth_term_phase  = np.outer(self.Ω,self.t).T + self.φ0 # Shape(T,M)
         phase_correction  =  self.Ω*dot_product*self.d
-        pulsar_term_phase = earth_term_phase.T.reshape(self.M,self.T,1) +phase_correction.T.reshape(self.M,1,self.N) # Shape(M,T,N)
+        pulsar_term_phase = earth_term_phase.T.reshape(self.M,self.T,1) + phase_correction.T.reshape(self.M,1,self.N) # Shape(M,T,N)
 
 
         #Trig terms
@@ -158,37 +154,6 @@ class GW:
         
 
         return a
-
-
-
-
-
-
-# def polarisation_tensors(m, n):
-#     """Alternative method to calculate the two polarisation tensors e_+, e_x.
-
-#     Args:
-#         m (ndarray): A vector of length 3, corresponding to a principal axis of the GW
-#         n (ndarray): A vector of length 3, corresponding to a principal axis of the GW
-
-#     Returns:
-#         e_plus  (ndarray): A 3x3 array corresponding to the + polarisation
-#         e_cross (ndarray): A 3x3 array corresponding to the x polarisation
-
-#     """
-#     x, y = m.shape
-
-#     #See e.g. https://stackoverflow.com/questions/77319805/vectorization-of-complicated-matrix-calculation-in-python
-#     ma = m.reshape(x, 1, y)
-#     mb = m.reshape(1, x, y)
-
-#     na = n.reshape(x, 1, y)
-#     nb = n.reshape(1, x, y)
-
-#     e_plus = ma*mb -na*nb
-#     e_cross = ma*nb +na*mb
-
-#     return e_plus,e_cross
 
 
 

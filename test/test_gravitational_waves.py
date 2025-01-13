@@ -1,43 +1,41 @@
 #This is the test file for src/gravitational_waves.py 
 from src import gravitational_waves
+from src import make_synthetic_data 
+
 import numpy as np 
 
 
-"""Check the principal axes function works for a single BH-BH source """
-def test_principal_axes_single_source():
-    
+"""Check the principal axes function works as expected"""
+def test_principal_axes():
 
-
-    #Check that m/n vectors are unit vectors for M, individual, random sources
-    M = 5 
+    #Check that m/n principal axes vectors are unit vectors for each of the M GW sources.
+    M = 10
     δ = np.random.uniform(low=-np.pi/2,high=np.pi/2,size=M)
     α = np.random.uniform(low=0.0,high=2*np.pi,size=M)
     ψ = np.random.uniform(low=0.0,high=2*np.pi,size=M)
 
+    m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ) # Get the principal axes of the GW
     for i in range(M):
-            m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ[i],α[i],ψ[i],M=1) # Get the principal axes of the GW
+        np.testing.assert_almost_equal(np.linalg.norm(m[i,:]), 1.0)
+        np.testing.assert_almost_equal(np.linalg.norm(n[i,:]), 1.0)
 
-            #Check they are unit vectors
-            np.testing.assert_almost_equal(np.linalg.norm(m), 1.0)
-            np.testing.assert_almost_equal(np.linalg.norm(n), 1.0)
 
 
 
     #Check when source is in the plane that z-cpt is zero
-    δ = 0.0 
-    α = np.pi/2 
+    δ = np.zeros((M))
+    α = np.ones((M)) * np.pi/2 
     ψ = np.pi/6
-    m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ,M=1) 
+    m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ) 
     gw_direction        = np.cross(m,n) 
     np.testing.assert_almost_equal(gw_direction[0,-1], 0.0)
 
 
-
     #Check when source is maximally high that the direction vector is [0,0,-1]
-    δ = np.pi/2
-    α = np.pi/2 
-    ψ = np.pi/6
-    m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ,M=1) # Get the principal axes of the GW
+    δ = np.ones((M)) * np.pi/2 
+    α = np.ones((M)) * np.pi/2 
+    ψ = np.pi/6 # can be anything
+    m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ) # Get the principal axes of the GW
     gw_direction        = np.cross(m,n) 
     assert np.all(gw_direction == np.array([0,0,-1]))
 
@@ -45,96 +43,32 @@ def test_principal_axes_single_source():
 
 
 
-    #Check source location does not depend on psi
-    δ = np.random.uniform(low=-np.pi/2,high=np.pi/2,size=1)
-    α = np.random.uniform(low=0.0,high=2*np.pi,size=1)
-    ψ1= np.random.uniform(low=0.0,high=2*np.pi,size=1)
-    m1,n1 = gravitational_waves._principal_axes(np.pi/2.0 - δ, α,ψ1,M=1)
-    gw_direction1        = np.cross(m1,n1) 
 
-  
-    ψ2= np.random.uniform(low=0.0,high=2*np.pi,size=1)
-    m2,n2 = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ2,M=1) 
-    gw_direction2        = np.cross(m2,n2) 
-    assert np.allclose(gw_direction1,gw_direction2) #same to within some float tolerance
-
-
-
-
-"""Check the principal axes function works for multiples BH-BH sources"""
-def test_principal_axes_multiple_source():
-
-    #Check unit vectors
-    M = 10
-    δ = np.random.uniform(low=-np.pi/2,high=np.pi/2,size=M)
-    α = np.random.uniform(low=0.0,high=2*np.pi,size=M)
-    ψ = np.random.uniform(low=0.0,high=2*np.pi,size=M)
-
-    m,n = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ,M=M) # Get the principal axes of the GW
-    for i in range(M):
-        np.testing.assert_almost_equal(np.linalg.norm(m[i,:]), 1.0)
-        np.testing.assert_almost_equal(np.linalg.norm(n[i,:]), 1.0)
 
 
 
     #Check source locations do not depend on psi
     ψ1= np.random.uniform(low=0.0,high=2*np.pi,size=M)
-    m1,n1 = gravitational_waves._principal_axes(np.pi/2.0 - δ, α,ψ1,M=M)
+    m1,n1 = gravitational_waves._principal_axes(np.pi/2.0 - δ, α,ψ1)
     gw_direction1        = np.cross(m1,n1) 
 
   
     ψ2= np.random.uniform(low=0.0,high=2*np.pi,size=M)
-    m2,n2 = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ2,M=M) 
+    m2,n2 = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ2) 
     gw_direction2        = np.cross(m2,n2) 
     assert np.allclose(gw_direction1,gw_direction2) #same to within some float tolerance
 
 
-
-
-
-"""Check the polarisation tensors function works for a single BH-BH binary"""
-def test_polarisation_tensors_single_source():
+"""Check the polarisation tensors function works as expected"""
+def test_polarisation_tensors():
     
-
-
-    #Pick some arbitrary values
-    δ = np.pi/6
-    α = np.pi/6
-    ψ = np.pi/6
-
-    m,n                 = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ,M=1) # Get the principal axes of the GW                             # The GW source direction. #todo: probably fast to have this not as a cross product - use cross product in unit test
-    e_plus,e_cross      = gravitational_waves._polarisation_tensors(m.T,n.T)              # The p
-
-    #Calculate the tensor values explicity   
-    #See equation 2a,2d of https://journals.aps.org/prd/abstract/10.1103/PhysRevD.81.104008
-    e_cross_manual = np.zeros((3,3))
-    for i in range(3):
-        for j in range(3):
-            e_cross_manual[i,j] = m[0,i]*n[0,j] +n[0,i]*m[0,j]
-
-    e_plus_manual = np.zeros((3,3))
-    for i in range(3):
-        for j in range(3):
-            e_plus_manual[i,j] = m[0,i]*m[0,j] -n[0,i]*n[0,j]
-
-    np.testing.assert_almost_equal(e_plus[:,:,0], e_plus_manual)
-    np.testing.assert_almost_equal(e_cross[:,:,0], e_cross_manual)
-    
-
-
-
-"""Check the polarisation tensors function works, for a multiple BH-BH binaries"""
-def test_polarisation_tensors_multiple_source():
-    
-
-
     #Check unit vectors
     M = 10
     δ = np.random.uniform(low=-np.pi/2,high=np.pi/2,size=M)
     α = np.random.uniform(low=0.0,high=2*np.pi,size=M)
     ψ = np.random.uniform(low=0.0,high=2*np.pi,size=M)
 
-    m,n                 = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ,M=M) # Get the principal axes of the GW                             # The GW source direction. #todo: probably fast to have this not as a cross product - use cross product in unit test
+    m,n                 = gravitational_waves._principal_axes(np.pi/2.0 - δ,α,ψ) # Get the principal axes of the GW                             # The GW source direction. #todo: probably fast to have this not as a cross product - use cross product in unit test
     e_plus,e_cross      = gravitational_waves._polarisation_tensors(m.T,n.T)            
 
 
@@ -156,8 +90,7 @@ def test_polarisation_tensors_multiple_source():
         np.testing.assert_almost_equal(e_plus[:,:,k], e_plus_manual)
         np.testing.assert_almost_equal(e_cross[:,:,k], e_cross_manual)
 
-
-
+"""Check the GW amplitude behaves as expected"""
 def test_h_amplitudes():
 
     #Everything should be zero if no GW
@@ -185,6 +118,44 @@ def test_h_amplitudes():
 
     assert hp == 2.0 
     assert hx == -2.0
+
+
+# def test_GW_class_init():
+
+
+#     #some useful quantities
+#     year = 3.154e7 # in seconds
+#     week = 604800  # in seconds
+
+
+#     #Define the parameters for the power law over Ω
+#     α = -3.0 #Exponent of the power law for the PDF of Ω
+#     Ω_min = 1/(10*year) #lower bound on the Ω power law distribution. Set by Tobs
+#     Ω_max = 1/(week)  #upper bound on the Ω power law distribution. Set by dt
+#     M = int(1e4)
+
+#     universe_i_sgwb = make_synthetic_data.BH_population(α,Ω_min,Ω_max,M) #this is a random realisation of the universe
+
+#     PTA = make_synthetic_data.Pulsars(pulsar_file='../data/NANOGrav_pulsars.csv',
+#               γp=1e-13,
+#               dt_weeks=1,
+#               Tobs_years=10)
+    
+
+
+
+
+
+
+
+
+
+
+
+#Scratch space------------------
+
+
+
 
 
 
