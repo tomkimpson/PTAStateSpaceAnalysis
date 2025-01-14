@@ -3,7 +3,7 @@
 ![Tests](https://github.com/tomkimpson/Argus/actions/workflows/run_test.yml/badge.svg)
 
 
-[![codecov](https://codecov.io/gh/tomkimpson/Argus/graph/badge.svg?token=2PEOHCFV1K)](https://codecov.io/gh/tomkimpson/PTAStateSpaceAnalysis)
+[![codecov](https://codecov.io/gh/tomkimpson/Argus/graph/badge.svg?token=2PEOHCFV1K)](https://codecov.io/gh/tomkimpson/Argus)
 
 
 Welcome to the `Argus` repo.
