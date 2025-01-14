@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd 
 import bilby 
 import logging 
+import sdeint
+
+from gravitational_waves import GW
 
 #Set logging level for this module
 logging.basicConfig(level=logging.INFO)
@@ -79,12 +82,6 @@ class BH_population:
 
         return priors
 
-
-
-
-
-
-
 class Pulsars:
     """A class which defines the pulsars which make up the PTA.
 
@@ -92,7 +89,11 @@ class Pulsars:
 
         `pulsar_file`: a path to a CSV which holds the ephemeris parameters of N pulsars  
 
-        `γp`: A float which specifies the (inverse) mean reversion timescale of the Ornstein Uhlenbeck process. All pulsars take the same value of γp
+        `γp`: A float which specifies the (inverse) mean reversion timescale of the Ornstein Uhlenbeck process. All pulsars take the same value of γp here, but need not generally.
+
+         `σp`: A float which specifies the magnitude of the pulsar stochastic wobbiling. All pulsars take the same value of σp here, but need not generally.
+        
+        `σm`: A float which specifies the magnitude of the measurement noise at the detector.
 
         `dt_weeks`: A float which specifies how frequently the pulsars are observed. All pulsars are observed at the same times.
 
@@ -102,12 +103,12 @@ class Pulsars:
 
     """
 
-    def __init__(self,pulsar_file,γp,dt_weeks,Tobs_years):
+    def __init__(self,pulsar_file,γp,σp,σm,dt_weeks,Tobs_years):
         """Initialize the class."""
         #Define some universal constants
         pc = 3e16     # parsec in m
         c  = 3e8      # speed of light in m/s
-        week = 7*24*3600 #a week in seconds
+        week = 7*24*3600 #a week in seconds. These should be defined elsewhere. todo.
 
 
         #Read the CSV and Extract the parameters
@@ -124,8 +125,14 @@ class Pulsars:
         self.q         = _unit_vector(np.pi/2.0 -self.δ, self.α) # 3 rows, N columns
 
 
-        #For every pulsar let γ be the same 
+        #For every pulsar let γ be the same for now.
         self.γp        = np.ones_like(self.f) * γp   
+
+        #Similarly, let every pulsar have the same value of σp for now. todo
+        self.σp        = np.ones_like(self.f) * σp  
+
+        #assign the measurement noise to the class
+        self.σm = σm
 
 
         #Some useful reshaping for vectorised calculations later
@@ -133,83 +140,81 @@ class Pulsars:
 
 
 
-      
-        # #It is useful in compute_a to have the products q1*q1, q1*q2 precomputed
-        # #This lets us write h_ij q^i q&j as a single dot product
-        # #There is probably a cleaner way to do this using np.einsum
-        # #I am sure there is a better way to do this
-        # self.q_products = np.zeros((self.Npsr,9))
-        # k = 0
-        # for n in range(self.Npsr):
-        #     k = 0
-        #     for i in range(3):
-        #         for j in range(3):
-        #             self.q_products[n,k] = self.q[n,i]*self.q[n,j]                    
-        #             k+=1
-        
-        # self.q_products = self.q_products.T # lazy transpose here to enable correct shapes for dot products later
-
-
-
-
-        # q_products = np.zeros((self.Npsr ,9))
-        # k = 0
-        # for n in range(self.Npsr ):
-        #     k = 0
-        #     for i in range(3):
-        #         for j in range(3):
-        #             q_products[n,k] = self.q[n,i]*self.q[n,j]
-        #             k+=1
-        # q_products = q_products.T
-        # self.q_products=q_products\
-
-
-        
-
-       
-
-
-
-
-    
-        # #Get angle between all pulsars
-        # #Doing this explicitly for completeness - I am sure faster ways exist
-        # self.ζ = np.zeros((self.Npsr,self.Npsr))
-
-        # for i in range(self.Npsr):
-        #     for j in range(self.Npsr):
-
-        #         if i == j: #i.e. angle between same pulsars is zero
-        #             self.ζ[i,j] = 0.0 
-                    
-        #         else: 
-        #             vector_1 = self.q[i,:]
-        #             vector_2 = self.q[j,:]
-        #             dot_product = np.dot(vector_1, vector_2)
-
-        #             self.ζ[i,j] = np.arccos(dot_product)
-
-        # #Get the correlation between pulsar angles
-        # self.pulsar_correlation = correlation_function(self.ζ)
-
-     
         #Discrete timesteps
         self.dt = dt_weeks * week
         end_seconds  = Tobs_years* 365*24*3600 #from years to second
         self.t       = np.arange(0,end_seconds,self.dt)
-      
-  
 
-        # # #Assign some other useful quantities to self
-        # self.σm =  SystemParameters.σm
-        # self.ephemeris = self.f + np.outer(self.t,self.fdot) 
-     
+        self.ephemeris = self.f + np.outer(self.t,self.fdot) 
         
+
         
+class fake_observations:
+    """A class which defines the pulsars which make up the PTA.
+
+        It takes the following arguments:
+
+        `pulsar_file`: a path to a CSV which holds the ephemeris parameters of N pulsars  
+
+        `γp`: A float which specifies the (inverse) mean reversion timescale of the Ornstein Uhlenbeck process. All pulsars take the same value of γp
+
+        `dt_weeks`: A float which specifies how frequently the pulsars are observed. All pulsars are observed at the same times.
+
+        `Tobs_years`: A float which specifies the total observation span in years 
+
+    ...and a placeholder **kwargs, which is not currently used. 
+
+    """
+
+    def __init__(self,universe_i,PTA):
+        """Initialize the class."""
+        self.universe_i = universe_i
+        self.PTA = PTA
+
+    def generate_intrinstic_state_timeseries(self,seed):
+
+        # Generate pulsar frequency timeseries by solving the Ito equaion dx = Ax dt + BdW
+        # All pulsars have independent state evolutions so everything is nice and diagonal.
+        Amatrix = np.diag(self.PTA.γp)
+        Bmatrix = np.diag(self.PTA.σp)  
+  
+        #Integrate the state equation
+        #e.g. https://pypi.org/project/sdeint/
+        def f(x,t):
+            return Amatrix.dot(x)
+        def g(x,t):
+            return Bmatrix
+
+        self.generator = np.random.default_rng(seed)    # Random seeding
+        initial_f = np.zeros((self.PTA.Npsr))      # All initial heterodyned frequencies are zero by definition
+        
+        #Integration step
+        self.state_f= sdeint.itoint(f,g,initial_f, self.PTA.t,generator=self.generator)
+
+
+
+    def generate_measured_frequency_timeseries(self):
+
+        #Construct a stochastic GW background
+        SGWB = GW(self.universe_i,self.PTA)
+        a = SGWB.compute_a()
+
+        assert a.shape == self.state_f.shape 
+
+        self.f_measured_no_noise = (1.0-a)*self.state_f - a*self.PTA.ephemeris
+
+        # #Create some seeded measurement noise and add it on
+        measurement_noise = self.generator.normal(0, self.PTA.σm,self.f_measured_no_noise.shape) # Measurement noise. Seeded with the same seed as the process noise
+        self.f_measured = self.f_measured_no_noise + measurement_noise
+
+
+        #assign a to the state
+        self.a = a
+
 
 
 """
-Given a latitude theta and a longitude phi, get the xyz unit vector which points in that direction 
+Given a latitude Θ and a longitude φ, get the xyz unit vector which points in that direction 
 """
 def _unit_vector(Θ,φ):
     qx = sin(Θ) * cos(φ)

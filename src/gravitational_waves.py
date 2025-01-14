@@ -38,7 +38,6 @@ def _principal_axes(θ,φ,ψ):
         n (ndarray):  A vector of length 3, corresponding to a principal axis of the GW
 
     """
-    
     M = len(θ)  #: How many GW sources are there? 
 
     m = np.zeros((M,3)) #Watch out! lower case m is different from upper case M. Lets change the notation to avoid any confusion. todo
