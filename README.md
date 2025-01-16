@@ -14,7 +14,7 @@ It is an ongoing effort to open-source methods developed at the [University of M
 
 * [Kimpson et al. 2024a](https://arxiv.org/abs/2409.14613)
 * [Kimpson et al 2024b](https://arxiv.org/abs/2410.10087)
-* [Kimpson et al 2025]([https://arxiv.org/abs/2410.10087](https://arxiv.org/abs/2501.06990))
+* [Kimpson et al 2025](https://arxiv.org/abs/2501.06990)
 
 
 
