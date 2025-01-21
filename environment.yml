@@ -1,4 +1,4 @@
-name: PTAStateSpaceAnalysis
+name: Argus
 channels:
   - defaults
   - https://repo.anaconda.com/pkgs/main
