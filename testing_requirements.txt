@@ -9,5 +9,4 @@ pandas==2.1.0
 sdeint==0.3.0
 scipy==1.9.1
 matplotlib==3.5.2
-uniplot==0.12.5
-bilby==2.4.0
+enterprise-pulsar==3.4.2
