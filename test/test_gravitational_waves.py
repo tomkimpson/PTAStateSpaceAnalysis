@@ -1,7 +1,5 @@
 #This is the test file for src/gravitational_waves.py 
 from src import gravitational_waves
-from src.legacy_code import make_synthetic_data 
-
 import numpy as np 
 
 
