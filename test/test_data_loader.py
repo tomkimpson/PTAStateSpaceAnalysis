@@ -3,8 +3,9 @@ from src import data_loader
 import os 
 import glob 
 import pytest
+import random
 
-@pytest.mark.filterwarnings("ignore::Warning")
+@pytest.mark.filterwarnings("ignore::Warning") # this does not seem to supress warnings. Not sure why not.
 def test_load_pulsar():
 
 
@@ -12,18 +13,27 @@ def test_load_pulsar():
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Construct the invariant directory path
-    directory = os.path.join(script_dir, '../data/IPTA_MockDataChallenge/IPTA_Challenge1_open/Challenge_Data/Dataset1/')
+    directory = os.path.join(script_dir, '../data/NANOGrav15year/wideband/')
 
-    # Normalize the path
-    directory = os.path.normpath(directory)
 
     # Get all .par files in the directory
-    par_files = glob.glob(os.path.join(directory, '*.par'))
+    par_files = sorted(glob.glob(os.path.join(directory, 'par/*.par')))
+    tim_files = sorted(glob.glob(os.path.join(directory, 'tim/*.tim')))
 
-    # Generate the corresponding .tim file paths
-    file_pairs = [(par_file, par_file.replace('.par', '.tim')) for par_file in par_files]
+    assert len(par_files) == len(tim_files) 
 
-    # Try to load the first N pulsars
-    for par_file, tim_file in file_pairs[0:1]:
-        psr = data_loader.LoadWidebandPulsarData.read_par_tim(par_file, tim_file, timing_package="pint", ephem="DE440", bipm_version="BIPM2019", clk="TT(BIPM2019)")
-  
+
+
+
+    # Combine par_files and tim_files into pairs
+    file_pairs = list(zip(par_files, tim_files))
+    # Select 5 random pairs
+    random_pairs = random.sample(file_pairs, 5)
+
+    # Check we can load the files with no errors
+    for par_file, tim_file in random_pairs:
+
+        try:
+            psr = data_loader.LoadWidebandPulsarData.read_par_tim(par_file, tim_file, timing_package="pint", ephem="DE440", bipm_version="BIPM2019", clk="TT(BIPM2019)")
+        except Exception as e:
+            pytest.fail(f"Failed to load pulsar data from {par_file} and {tim_file} with error: {e}")

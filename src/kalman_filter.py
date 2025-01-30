@@ -4,6 +4,53 @@ import numpy as np
 import scipy
 
 
+class KalmanFilter:
+    """A class to implement the linear Kalman filter.
+
+    It takes four initialization arguments:
+
+        `Model`: class which defines all the Kalman machinery e.g. state transition models, covariance matrices etc.
+
+        `Observations`: 2D array which holds the noisy observations recorded at the detector
+
+        `x0`: A 1D array which holds the initial guess of the initial states
+
+        `P0`: The uncertainty in the guess of P0
+
+    ...and a placeholder **kwargs, which is not currently used.
+    """
+
+    def __init__(self, Model, Observations, x0, P0, **kwargs):
+        """Initialize the class."""
+        self.model = Model
+        self.observations = Observations
+        self.x = x0
+        self.P = P0
+
+    def predict(self):
+        """Predict the next state and covariance."""
+        self.x = self.model.F @ self.x + self.model.B @ self.model.u
+        self.P = self.model.F @ self.P @ self.model.F.T + self.model.Q
+
+    def update(self, z):
+        """Update the state and covariance with a new observation."""
+        y = z - self.model.H @ self.x
+        S = self.model.H @ self.P @ self.model.H.T + self.model.R
+        K = self.P @ self.model.H.T @ np.linalg.inv(S)
+        self.x = self.x + K @ y
+        self.P = (np.eye(len(self.x)) - K @ self.model.H) @ self.P
+
+    def run(self):
+        """Run the Kalman filter algorithm over all observations."""
+        for z in self.observations:
+            self.predict()
+            self.update(z)
+
+
+
+
+
+
 
 class ExtendedKalmanFilter:
     """A class to implement the extended (non-linear) Kalman filter.
