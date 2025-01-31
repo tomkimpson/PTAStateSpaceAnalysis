@@ -22,7 +22,6 @@ It is an ongoing effort to open-source methods developed at the [University of M
 
 ### Notes
 
-[Instructions on installing pulsar tools](https://gist.github.com/tomkimpson/5a245f6f1a8fc3b9cb39258741f7b572)
 
 
 Useful example analysis from NANOGrav https://github.com/nanograv/15yr_stochastic_analysis/blob/main/tutorials/parameter_est.ipynb
