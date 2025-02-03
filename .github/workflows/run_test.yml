@@ -23,11 +23,11 @@ jobs:
 
       - name: Test with pytest
         run: |
-          conda run -n test-env coverage run -m pytest -v -s
+          conda run -n Argus coverage run -m pytest -v -s
 
       - name: Generate Coverage Report
         run: |
-          conda run -n test-env coverage report -m
+          conda run -n Argus coverage report -m
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
