@@ -1,3 +1,6 @@
+"""Module for specifying models to be used with Kalman filter."""
+
+
 from abc import ABC, abstractmethod
 import numpy as np 
 from scipy.linalg import block_diag
@@ -27,24 +30,28 @@ class ModelHyperClass(ABC): # abstract class
     @property
     @abstractmethod
     def F_matrix(self):
+        """Abstract method for the model state transition matrix F."""
         pass
 
 
     @property
     @abstractmethod
     def Q_matrix(self):
+        """Abstract method for the model Q-matrix."""
         pass
 
 
     @property
     @abstractmethod
     def H_matrix(self):
+        """Abstract method for the model H-matrix."""
         pass
 
 
     @property
     @abstractmethod
     def R_matrix(self):
+        """Abstract method for the model R-matrix."""
         pass
 
 

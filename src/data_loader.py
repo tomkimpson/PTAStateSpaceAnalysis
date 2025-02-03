@@ -1,3 +1,4 @@
+"""Module for loading pulsar data."""
 
 from enterprise.pulsar import Pulsar as enterprise_pulsar
 import numpy as np 
@@ -38,7 +39,7 @@ class LoadWidebandPulsarData():
     """
 
     def __init__(self,ds_psr):
-        """Initializes the LoadWidebandPulsarData object with pulsar data.
+        """Initialize the LoadWidebandPulsarData object with pulsar data.
 
         This constructor initializes the object with various pulsar data attributes
         extracted from the provided pulsar data source object.
@@ -65,10 +66,11 @@ class LoadWidebandPulsarData():
 
 
 
-    @classmethod #following structure in minnow, https://github.com/meyers-academic/minnow/blob/main/src/minnow/pulsar.py . Why not just pass parfile and timfile direct to __init__ ? 
+    @classmethod 
     def read_par_tim(cls, par_file: str, tim_file: str, **kwargs) -> 'LoadWidebandPulsarData':
-        """Loads the pulsar data from the specified file paths, uses enterprise to extract
-        the relevant data, and stores it in the data attribute.
+        """Load the pulsar data from the specified file paths.
+
+        Follows #following structure in minnow, https://github.com/meyers-academic/minnow/blob/main/src/minnow/pulsar.py . Why not just pass parfile and timfile direct to __init__ ? 
 
         Parameters
         ----------
