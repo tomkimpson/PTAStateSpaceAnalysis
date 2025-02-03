@@ -18,8 +18,6 @@ class LoadWidebandPulsarData():
         Errors associated with the times of arrival.
     residuals : array-like
         Residuals of the pulsar timing model.
-    backend_flags : array-like
-        Backend flags associated with the observations.
     fitpars : dict
         Fitted parameters of the pulsar timing model.
     toa_diffs : array-like
@@ -60,12 +58,12 @@ class LoadWidebandPulsarData():
         self.toas            = ds_psr.toas
         self.toaerrs         = ds_psr.toaerrs
         self.residuals       = ds_psr.residuals
-        self.backend_flags   = ds_psr.backend_flags
         self.fitpars         = ds_psr.fitpars
         self.toa_diffs       = np.diff(self.toas)
         self.toa_diff_errors = np.sqrt(self.toaerrs[1:]**2 + self.toaerrs[:-1]**2)
         self.M_matrix        = ds_psr.Mmat
         self.name            = ds_psr.name
+
 
 
     @classmethod #following structure in minnow, https://github.com/meyers-academic/minnow/blob/main/src/minnow/pulsar.py . Why not just pass parfile and timfile direct to __init__ ? 

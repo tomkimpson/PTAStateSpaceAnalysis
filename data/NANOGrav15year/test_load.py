@@ -1,16 +1,14 @@
 from enterprise.pulsar import Pulsar as enterprise_pulsar
 import glob
 
-datadir = ''
-parfiles = sorted(glob.glob(datadir + '*.par'))
-timfiles = sorted(glob.glob(datadir + '*.tim'))
 
+parfiles = sorted(glob.glob('wideband/par/*.par'))
+timfiles = sorted(glob.glob('wideband/tim/*.tim'))
 
 psrs = []
 for p, t in zip(parfiles, timfiles):
+    print("Loading file {0}".format(p))
     psr = enterprise_pulsar(p, t)
-
-    thing1 = psr.toas
     psrs.append(psr)
 
 
