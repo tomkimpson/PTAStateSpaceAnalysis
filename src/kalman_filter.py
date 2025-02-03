@@ -20,10 +20,10 @@ class KalmanFilter:
     ...and a placeholder **kwargs, which is not currently used.
     """
 
-    def __init__(self, Model, Observations, x0, P0, **kwargs):
+    def __init__(self, model, observations, x0, P0, **kwargs):
         """Initialize the class."""
-        self.model = Model
-        self.observations = Observations
+        self.model = model
+        self.observations = observations
         self.x = x0
         self.P = P0
 

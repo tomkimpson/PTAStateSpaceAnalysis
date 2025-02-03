@@ -64,6 +64,9 @@ class LoadWidebandPulsarData():
         self.M_matrix        = ds_psr.Mmat
         self.name            = ds_psr.name
 
+        self.RA = ds_psr._raj
+        self.DEC = ds_psr._decj
+
 
 
     @classmethod #following structure in minnow, https://github.com/meyers-academic/minnow/blob/main/src/minnow/pulsar.py . Why not just pass parfile and timfile direct to __init__ ? 

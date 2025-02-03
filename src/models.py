@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np 
-
+from scipy.linalg import block_diag
 
 class ModelHyperClass(ABC): # abstract class
     """
@@ -51,17 +51,33 @@ class ModelHyperClass(ABC): # abstract class
 
 
 
-class ModelClass(ModelHyperClass): #concrete class
+class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
 
-    def __init__(self,nx,ny):
-        self.nx = nx #number of hidden states
-        self.ny = ny #number of observations. Actually, this could change. Placeholder for now.
-        pass
+    def __init__(self,df_psr): #takes a dataframe of "meta" pulsar data i,e. a list of the pulsars used with other high level attrirbutes, rather than the raw TOAs/ residuals
+
+        self.Npsr = len(df_psr)
+        self.name = 'Stochastic GW background model'
+
+        nx = self.Npsr*(3+2) + df_psr['dim_M'].sum() # phi, f, fdot, a,r, + M terms for each pulsar
+
+        self.M = df_psr.dim_M.values
 
 
-    @property
-    def F_matrix(self):
-        return np.eye(10)
+    def F_matrix(self,θ):
+
+        dt = θ['dt'] #time between observations
+
+        def _per_pulsar_F_matrix(M):
+            """Return the F matrix for each pulsar."""
+            Fφ = np.array([[1, dt, dt**2 / 2], [0, 1, dt], [0, 0, 1]])
+            F1 = np.eye(2+M)
+            return block_diag(Fφ, F1)
+
+
+        F_matrices = [_per_pulsar_F_matrix(M) for M in self.M]
+        combined_matrix = block_diag(*F_matrices)
+
+        return combined_matrix
     
     @property
     def Q_matrix(self):
@@ -76,6 +92,3 @@ class ModelClass(ModelHyperClass): #concrete class
     def R_matrix(self):
         return np.eye(10)
 
-
-c = ModelClass()  
-print(c.R_matrix)

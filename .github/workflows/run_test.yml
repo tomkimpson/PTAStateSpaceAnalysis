@@ -14,9 +14,8 @@ jobs:
       - name: Set up Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: test-env
-          environment-file: environment.yml
-          python-version: 3.11
+          activate-environment: Argus
+          environment-file: env.yml
           auto-activate-base: false
       - run: |
           conda info
