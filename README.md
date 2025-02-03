@@ -24,13 +24,13 @@ It is an ongoing effort to open-source methods developed at the [University of M
 
 
 
-Useful example analysis from NANOGrav https://github.com/nanograv/15yr_stochastic_analysis/blob/main/tutorials/parameter_est.ipynb
-
-The 15 year dataset from NANOGrav is a good standard to test on. I find parsing the older mock data using modern versions of enterprise/linbstempo/PINT does not work well. See e.g. `test_loading_mock_data.ipynb`
-
+There is a useful example analysis from NANOGrav data using standard methods [here](https://github.com/nanograv/15yr_stochastic_analysis/blob/main/tutorials/parameter_est.ipynb).
 
 
 
 ### Etymology
 
+Argus draws its name from the hundred-eyed giant of Greek mythology, Argus Panoptes. 
+
+In a pulsar timing array, multiple pulsars across the sky act as a network of cosmic "eyes" continuously watching for gravitational waves.
 
