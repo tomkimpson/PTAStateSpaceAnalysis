@@ -5,13 +5,12 @@ import numpy as np
 
 
 class LoadWidebandPulsarData():
-    """
-    A class to load and process pulsar data at a single frequency channel.
+    """A class to load and process pulsar data at a single frequency channel.
 
     This class provides methods to load pulsar data from parameter and timing files. 
 
-    Attributes:
-    -----------
+    Attributes
+    ----------
     toas : array-like
         Times of arrival of the pulsar signals.
     toaerrs : array-like
@@ -29,32 +28,29 @@ class LoadWidebandPulsarData():
     name : str
         Name of the pulsar.
 
-    Methods:
-    --------
+    Methods
+    -------
     __init__(ds_psr):
         Initializes the LoadWidebandPulsarData object with pulsar data.
     read_par_tim(par_file, tim_file, **kwargs):
         Class method to load pulsar data from parameter and timing files using enterprise.
+
     """
 
-
     def __init__(self,ds_psr):
-
-        """
-        Initializes the LoadWidebandPulsarData object with pulsar data.
+        """Initializes the LoadWidebandPulsarData object with pulsar data.
 
         This constructor initializes the object with various pulsar data attributes
         extracted from the provided pulsar data source object.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         ds_psr : object
             An object containing pulsar data, typically an instance of a class that
             provides attributes such as toas, toaerrs, residuals, radio_frequencies,
             backend_flags, fitpars, and Mmat.
-        """
 
-       
+        """
         self.toas            = ds_psr.toas
         self.toaerrs         = ds_psr.toaerrs
         self.residuals       = ds_psr.residuals
@@ -71,12 +67,11 @@ class LoadWidebandPulsarData():
 
     @classmethod #following structure in minnow, https://github.com/meyers-academic/minnow/blob/main/src/minnow/pulsar.py . Why not just pass parfile and timfile direct to __init__ ? 
     def read_par_tim(cls, par_file: str, tim_file: str, **kwargs) -> 'LoadWidebandPulsarData':
-        """
-        Loads the pulsar data from the specified file paths, uses enterprise to extract
+        """Loads the pulsar data from the specified file paths, uses enterprise to extract
         the relevant data, and stores it in the data attribute.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         par_file : str
             Path to the parameter file.
         tim_file : str
@@ -84,12 +79,12 @@ class LoadWidebandPulsarData():
         **kwargs : dict
             Additional keyword arguments to pass to the enterprise pulsar loader.
 
-        Returns:
-        --------
+        Returns
+        -------
         LoadWidebandPulsarData
             An instance of the LoadWidebandPulsarData class initialized with the loaded data.
-        """
 
+        """
         try:
             pulsar_object = enterprise_pulsar(str(par_file), str(tim_file), **kwargs) #error handling. Probably overkill? 
             return cls(pulsar_object)
