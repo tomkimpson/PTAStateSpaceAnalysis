@@ -30,7 +30,7 @@ There is a useful example analysis from NANOGrav data using standard methods [he
 
 ### Etymology
 
-Argus draws its name from the hundred-eyed giant of Greek mythology, Argus Panoptes. 
+Argus draws its name from the hundred-eyed giant of Greek mythology. 
 
-In a pulsar timing array, multiple pulsars across the sky act as a network of cosmic "eyes" continuously watching for gravitational waves.
+In a pulsar timing array, multiple pulsars across the sky act as a network of cosmic "eyes", continuously watching for gravitational waves.
 
