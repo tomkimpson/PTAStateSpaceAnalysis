@@ -18,7 +18,7 @@ jobs:
         docs-folder: "docs/"
         pre-build-command: python -m pip install docutils==0.20 sphinx_book_theme
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: html-docs
         path: docs/build/html/
