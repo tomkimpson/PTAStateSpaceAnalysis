@@ -76,7 +76,7 @@ class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
         self.Npsr = len(df_psr)
         self.name = 'Stochastic GW background model'
 
-        self.nx = self.Npsr*(3+2) + df_psr['dim_M'].sum() # phi, f, fdot, a,r, + M terms for each pulsar
+        self.nx = self.Npsr*(2+2) + df_psr['dim_M'].sum() # δφ, δf, r,a + M terms for each pulsar
 
         self.M = df_psr.dim_M.values
 
@@ -111,8 +111,8 @@ class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
                 The state transition matrix F for a single pulsar.
 
             """
-            Fφ = np.array([[1, dt, dt**2 / 2], [0, 1, dt], [0, 0, 1]])
-            F1 = np.eye(2+M)
+            Fφ = np.array([[1, dt, 0, 0], [0, 1-γp*dt, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1-γa*dt]])
+            F1 = np.eye(M)
             return block_diag(Fφ, F1)
 
 
