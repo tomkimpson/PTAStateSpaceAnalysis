@@ -135,8 +135,9 @@ class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
 
         return F
     
-    @property
-    def Q_matrix(self):
+
+    
+    def Q_matrix(self,θ):
         """Compute the process noise covariance matrix Q.
 
         Returns
@@ -145,7 +146,62 @@ class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
             The process noise covariance matrix Q.
 
         """
-        return np.eye(10)
+    
+
+        #Extract parameters
+        dt = θ['dt'] # time between observations, scalar
+        γp = θ['γp']  # frequency mean reversion timescale inverse, (N,)
+        γa = θ['γa'] # a(t) mean reversion timescale inverse, scalar
+        σp = θ['σp']
+
+        h2      = θ['h2']
+        Gamma_mat = θ['gamma_mat']  # shape: (N, N)
+
+        σ_eps = θ['σ_epsilon']
+
+
+        #1. Phase/Frequency block
+        exp_gamma    = np.exp(-γp * dt)
+        exp_2gamma   = np.exp(-2 * γp * dt)
+        A_phase = dt / (γp**2) - 2 * (1 - exp_gamma) / (γp**3) + (1 - exp_2gamma) / (2 * γp**3)
+        B_phase = (2 * (1 - exp_gamma) - (1 - exp_2gamma)) / (2 * γp**2)
+        C_phase = (1 - exp_2gamma) / (2 * γp)
+        
+        # Build each 2x2 block for phase/velocity:
+        Q_phase_blocks = [ (sp**2) * np.array([[A, B],
+                                            [B, C]])
+                        for sp, A, B, C in zip(σp, A_phase, B_phase, C_phase)]
+        Q_phase = block_diag(*Q_phase_blocks)  # shape: (2N, 2N)
+        
+        # 2. r(t), a(t) block
+        exp_ga    = np.exp(-γa * dt)
+        exp_2ga   = np.exp(-2 * γa * dt)
+        A_ra = dt/(γa**2) - 2*(1 - exp_ga)/(γa**3) + (1 - exp_2ga)/(2*γa**3)
+        B_ra = (2*(1 - exp_ga) - (1 - exp_2ga))/(2*γa**2)
+        C_ra = (1 - exp_2ga)/(2*γa)
+        Q_ra0 = np.array([[A_ra, B_ra],
+                            [B_ra, C_ra]])
+
+        # Noise is correlated across pulsars.
+
+        σa= (h2 * γa / 6.0) * Gamma_mat  # shape: (N, N)
+
+        # Then the full Q for the r,a block is:
+        Q_ra = np.kron(σa, Q_ra0)  # shape: (2N, 2N)
+
+
+
+        # -- Mmat block --
+        #Q_offset_blocks = [ (σ_eps**2) * dt * np.eye(M_val) for M_val in self.M ]
+        
+        Q_offset_blocks = [(σ_eps**2) * dt * np.eye(M_val) for M_val in self.M]
+        Q_offset = block_diag(*Q_offset_blocks)
+
+        # -- Overall Q --
+        Q = block_diag(Q_phase, Q_ra, Q_offset)
+
+
+        return Q
     
     @property
     def H_matrix(self):
