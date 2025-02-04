@@ -87,7 +87,7 @@ class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
         Parameters
         ----------
         θ : dict
-            Dictionary containing model parameters, including 'dt' (time between observations).
+            Dictionary containing all free parameters of the model.
 
         Returns
         -------
@@ -95,33 +95,45 @@ class StochasticGWBackgroundModel(ModelHyperClass): #concrete class
             The state transition matrix F.
 
         """
-        dt = θ['dt'] #time between observations
 
-        def _per_pulsar_F_matrix(M):
-            """Return the F matrix for each pulsar.
-
-            Parameters
-            ----------
-            M : int
-                Dimension of the additional terms for each pulsar.
-
-            Returns
-            -------
-            np.ndarray
-                The state transition matrix F for a single pulsar.
-
-            """
-            Fφ = np.array([[1, dt, 0, 0], [0, 1-γp*dt, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1-γa*dt]])
-            F1 = np.eye(M)
-            return block_diag(Fφ, F1)
+        #Extract parameters
+        dt = θ['dt'] # time between observations, scalar
+        γp = θ['γp']  # frequency mean reversion timescale inverse, (N,)
+        γa = θ['γa'] # a(t) mean reversion timescale inverse, scalar
 
 
-        F_matrices = [_per_pulsar_F_matrix(M) for M in self.M]
-        combined_matrix = block_diag(*F_matrices)
 
-        assert combined_matrix.shape == (self.nx, self.nx)
+        # Phase/Frequency block
+        exp_γ = np.exp(-γp * dt)
+        α     = (1 - exp_γ) / γp
 
-        return combined_matrix
+
+        #Construct each 2x2 block for phase/frequency
+
+        F_phase_blocks = [np.array([[1, a],
+                                [0, b]]) for a, b in zip(α, exp_γ )]
+        F_phase = block_diag(*F_phase_blocks)  # resulting shape: (2N, 2N)
+
+
+        #Residuals/redshift block
+        exp_γa = np.exp(-γa * dt)
+
+        α_a = (1 -  exp_γa) / γa
+
+        #Construct a 2x2 block for residuals/redshift. This is the same for every pulsar since γa is the same for each pulsar
+        F_ra_single = np.array([[1,  α_a],
+                                [0, exp_γa]])
+        F_ra = np.kron(np.eye(self.Npsr), F_ra_single)  # resulting shape: (2N, 2N)
+
+        # -- Mmatrix Block --
+        F_offset_blocks = [np.eye(M_val) for M_val in self.M]
+        F_offset = block_diag(*F_offset_blocks)
+
+
+
+        F = block_diag(F_phase, F_ra, F_offset)
+
+        return F
     
     @property
     def Q_matrix(self):
