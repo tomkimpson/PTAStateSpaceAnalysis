@@ -4,12 +4,10 @@ import numpy as np
 import pandas as pd
 from functools import reduce
 from enterprise.pulsar import Pulsar as EnterprisePulsar
-from math import sin, cos
 
 
 class LoadWidebandPulsarData:
-    """
-    A class to load and process pulsar data at a single frequency channel.
+    """A class to load and process pulsar data at a single frequency channel.
 
     Attributes
     ----------
@@ -43,17 +41,18 @@ class LoadWidebandPulsarData:
     read_multiple_par_tim(par_files, tim_files, max_files=None)
         Class method to load multiple par/tim file pairs and return aggregated
         DataFrames and an angular separation matrix.
+
     """
 
     def __init__(self, ds_psr):
-        """
-        Initialize the LoadWidebandPulsarData object with pulsar data.
+        """Initialize the LoadWidebandPulsarData object with pulsar data.
 
         Parameters
         ----------
         ds_psr : object
             An object containing pulsar data (e.g., an instance of enterprise.pulsar.Pulsar)
             with attributes: toas, toaerrs, residuals, fitpars, Mmat, name, _raj, and _decj.
+
         """
         self.toas = ds_psr.toas
         self.toaerrs = ds_psr.toaerrs
@@ -70,8 +69,7 @@ class LoadWidebandPulsarData:
 
     @classmethod
     def read_par_tim(cls, par_file: str, tim_file: str, **kwargs) -> "LoadWidebandPulsarData":
-        """
-        Load the pulsar data from the specified parameter and timing files.
+        """Load the pulsar data from the specified parameter and timing files.
 
         Parameters
         ----------
@@ -86,6 +84,7 @@ class LoadWidebandPulsarData:
         -------
         LoadWidebandPulsarData
             An instance of LoadWidebandPulsarData initialized with the loaded data.
+
         """
         try:
             pulsar_object = EnterprisePulsar(par_file, tim_file, **kwargs)
@@ -99,9 +98,9 @@ class LoadWidebandPulsarData:
                               tim_files: list[str], 
                               max_files: int | None = None, 
                               **kwargs) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
-        """
-        Load multiple par/tim file pairs, merge their TOAs/residuals into a DataFrame,
-        and collect metadata (pulsar name, RA, DEC, etc.) in a second DataFrame.
+        """Load multiple par/tim file pairs.
+         
+        Merge their TOAs/residuals into a DataFrame,and collect metadata (pulsar name, RA, DEC, etc.) in a second DataFrame.
         Also, compute the angular separation matrix between all loaded pulsars.
 
         Parameters
@@ -112,6 +111,8 @@ class LoadWidebandPulsarData:
             List of timing file paths.
         max_files : int, optional
             If provided, only the first `max_files` pairs will be processed.
+        **kwargs : dict
+            Additional keyword arguments to pass to enterprise.pulsar.Pulsar.
 
         Returns
         -------
@@ -130,9 +131,8 @@ class LoadWidebandPulsarData:
         For standard RA/DEC in radians:
             - RA is treated as the azimuth (φ).
             - DEC is converted to co-latitude: θ = π/2 − DEC.
+
         """
-
-
         # Combine the par and tim files into pairs; optionally limit to max_files.
         file_pairs = list(zip(par_files, tim_files))
         if max_files is not None:
