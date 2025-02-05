@@ -1,7 +1,17 @@
 \documentclass[]{scrartcl}
 
+
+%packages
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks   = true, %Colours links instead of ugly boxes
+	urlcolor = teal
+}
+
 %opening
-\title{}
+\title{Notes on Kalman filter for PTA analysis}
 \author{}
 
 \begin{document}
@@ -9,9 +19,587 @@
 \maketitle
 
 \begin{abstract}
-
+This note defines the Kalman ``machinery"" for the state-space / residuals formulation of PTA analysis. It is heavily based on work done by P.Meyers and the \textsc{minnow} package, with extension to handle multiple pulsars and the influence of the stochastic GW background. 
 \end{abstract}
 
-\section{}
+\section{Requirements}
+
+For the purposes of running state-space algorithms, we need to define the following:
+
+\begin{itemize}
+\item $\boldsymbol{X}$ : the state vector, dimension $n_X$
+\item  $\boldsymbol{Y}$ : the observation vector, dimension $n_Y$
+\item $\boldsymbol{F}$ : the state transition matrix, dimension $n_X$ $\times$ $n_X$
+\item  $\boldsymbol{H}$ : the measurement matrix, dimension $n_Y$ $\times$ $n_X$
+\item $\boldsymbol{Q}$ : the process noise covariance matrix, dimension $n_X$ $\times$ $n_X$
+\item $\boldsymbol{R}$ : the measurement noise covariance matrix, dimension $n_Y$ $\times$ $n_Y$
+\end{itemize}
+
+
+
+
+
+
+
+
+\section{Single pulsar}\label{sec:single_pulsar}
+To start, lets work with a single pulsar, $N=1$. \newline 
+
+
+\subsection{State vector}
+
+\noindent The state vector is 
+
+\begin{equation}
+	\boldsymbol{X} = \left(\delta \phi, \delta f, r,a,\delta \epsilon_1, \delta \epsilon_2, \cdots, \delta \epsilon_{\mathrm M} \right)
+\end{equation}
+The first two variables, $\delta \phi$ and $\delta f$, are deviations from the spin-down parameters in timing model fit. Since we know these deviations won’t move us more than 1 turn away (because these are nice millisecond pulsars) these are reasonable state variables to use. So for example, $\delta f$ is a fluctuation from the measured spin-down in the timing model. \newline 
+
+
+\noindent The subsequent two variables, $r$ and $a$, quantify the effect of the gravitational wave. The variable $a(t)$ is the familiar redshift quantity from \href{https://arxiv.org/abs/2501.06990}{PTA P3}, and $r$ is the induced timing residual, obtained by integrating the redshift (see e.g. \href{https://arxiv.org/abs/1003.0677}{Equation 5 of Sesana \& vecchio 2010}). \newline 
+
+
+\noindent The final $M$ parameters, $\delta \epsilon_i$ are parameters of the design matrix. These parameters will be used to incorporate the effects of the timing model. \newline 
+
+
+
+\noindent The observation vector is 
+\begin{equation}
+	\boldsymbol{Y} = \left(\delta t \right)
+\end{equation}
+where $\delta t$ is the timing residual.
+
+
+\subsection{Dynamical Equations (continuous time)}
+
+The above state variables evolve according to the following dynamical equations 
+
+
+\begin{align}
+	\frac{d}{dt} \delta \phi^{(n)} &= \delta f^{(n)}, \\
+	\frac{d}{dt} \delta f^{(n)} &= -\gamma_p^{(n)} \delta f^{(n)} + \chi_p^{(n)}(t;\sigma_p^{(n)}), \\
+	\frac{d}{dt} r^{(n)} &= a^{(n)}, \\
+	\frac{d}{dt} a^{(n)} &= -\gamma_a a^{(n)} + \chi_a^{(n)}(t;\sigma_a^{(n)}), \\
+	\frac{d}{dt} \delta \epsilon^{(n)}_{m} &= \chi_\epsilon^{(n)}(t;\sigma_\epsilon) \quad \forall m \in [1, M^{(n)}].
+\end{align}
+where $\chi_a$ is the usual white noise stochastic process. \newline 
+
+
+
+\noindent The states are related to the observables via a measurement equation
+\begin{equation}
+	\delta t = \frac{\delta \phi}{f_0} + \mathbf{M} \mathbf{\delta \epsilon} - r
+\end{equation}
+where  $\mathbf{M}$ is the \textit{design matrix} and $f_0$ is the pulsar rotation frequency \footnote{I need to check the sign of the residual term. Is it definitely a minus?}. \newline 
+
+
+\noindent Note that the dynamics of the $\delta \epsilon^{(n)}_{m}$ terms here are a bit different to how it is done in \textsc{minnow}. In \textsc{minnow} these terms have zero process noise, and they just get initialised with some values (and covariance) which can then be estimated by the inference procedure. In our case I think we can marginalise over these timing model parameters by including them in the state and setting the variance $\sigma_\epsilon$ to be very large. This is effecively what pulsar people already do when using Gaussian processes in \textsc{enterprise}; see e.g. \href{https://arxiv.org/abs/1407.1838}{Section IV of van Haasteran \& Vallisneri, 2014}. In this way, we can avoid having to estimate an extra $\sum_{i=1}^{N} M^{(i)}$ parameters. I include the process noise term here by default; if we want to remove it in the future and do the full parameter estimation, we can just set $\sigma_\epsilon=0$ everywhere that follows.
+
+
+
+
+\subsection{Discretisation}
+
+\subsubsection{F-matrix}
+	
+	For the $\left(\delta\phi,\delta f\right)$ block, the continuous system is
+	\begin{equation}
+	\frac{d}{dt}\begin{pmatrix}\delta\phi \\ \delta f\end{pmatrix} 
+	=
+	\begin{pmatrix}
+		0 & 1\\[1mm]
+		0 & -\gamma_p
+	\end{pmatrix}
+	\begin{pmatrix}\delta\phi \\ \delta f\end{pmatrix}
+	+
+	\begin{pmatrix}0\\1\end{pmatrix}\chi_p(t),
+	\end{equation}
+	and the exact discretisation (matrix exponential) gives
+	\begin{equation}
+	F_p = \begin{pmatrix}
+		1 & \dfrac{1-e^{-\gamma_p\Delta t}}{\gamma_p}\\[1mm]
+		0 & e^{-\gamma_p\Delta t}
+	\end{pmatrix}.
+	\end{equation}
+	Similarly, for the $\left(r,a\right)$ block we have
+	\begin{equation}
+	F_a = \begin{pmatrix}
+		1 & \dfrac{1-e^{-\gamma_a\Delta t}}{\gamma_a}\\[1mm]
+		0 & e^{-\gamma_a\Delta t}
+	\end{pmatrix}.
+	\end{equation}
+For the timing model parameters $\delta\epsilon_m$, the dynamics are a random walk:
+	\begin{equation}
+	\delta\epsilon_{m,k+1} = \delta\epsilon_{m,k} + \eta_{\epsilon,m,k},
+	\end{equation}
+	so that the deterministic evolution is simply the identity. \newline 
+	
+	\noindent Thus, the overall discrete state transition matrix is given by the block diagonal matrix
+	\begin{equation}
+	\boldsymbol{F} = \begin{pmatrix}
+		F_p & 0 & 0\\[1mm]
+		0 & F_a & 0\\[1mm]
+		0 & 0 & I_M
+	\end{pmatrix},
+	\end{equation}
+
+	
+\subsubsection{Q-matrix}
+	
+	For the $\left(\delta\phi,\delta f\right)$ block with noise variance $\sigma_p^2$, the discretised noise covariance is
+	\begin{equation}
+	Q_p = \sigma_p^2
+	\begin{pmatrix}
+		\displaystyle \frac{\Delta t}{\gamma_p^2} - \frac{2\left(1-e^{-\gamma_p\Delta t}\right)}{\gamma_p^3} + \frac{1-e^{-2\gamma_p\Delta t}}{2\gamma_p^3} & \displaystyle \frac{1-e^{-\gamma_p\Delta t}}{\gamma_p^2} - \frac{1-e^{-2\gamma_p\Delta t}}{2\gamma_p^2}\\[2mm]
+		\displaystyle \frac{1-e^{-\gamma_p\Delta t}}{\gamma_p^2} - \frac{1-e^{-2\gamma_p\Delta t}}{2\gamma_p^2} & \displaystyle \frac{1-e^{-2\gamma_p\Delta t}}{2\gamma_p}
+	\end{pmatrix}.
+	\end{equation}
+	For the $\left(r,a\right)$ block with noise variance $\sigma_a^2$, we similarly have
+	\begin{equation}
+	Q_a = \sigma_a^2
+	\begin{pmatrix}
+		\displaystyle \frac{\Delta t}{\gamma_a^2} - \frac{2\left(1-e^{-\gamma_a\Delta t}\right)}{\gamma_a^3} + \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^3} & \displaystyle \frac{1-e^{-\gamma_a\Delta t}}{\gamma_a^2} - \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^2}\\[2mm]
+		\displaystyle \frac{1-e^{-\gamma_a\Delta t}}{\gamma_a^2} - \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^2} & \displaystyle \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a}
+	\end{pmatrix}.
+	\end{equation}
+	For each timing model parameter $\delta\epsilon_m$, modeled as a random walk,
+	\begin{equation}
+	\delta\epsilon_{m,k+1} = \delta\epsilon_{m,k} + \eta_{\epsilon,m,k}, \quad \eta_{\epsilon,m,k}\sim \mathcal{N}(0,\sigma_\epsilon^2\,\Delta t),
+	\end{equation}
+	so that
+	\begin{equation}
+	Q_\epsilon = \sigma_\epsilon^2\,\Delta t\,I_M.
+	\end{equation}
+	Thus, the overall process noise covariance is block diagonal:
+	\begin{equation}
+	\boldsymbol{Q} = \begin{pmatrix}
+		Q_p & 0 & 0\\[2mm]
+		0 & Q_a & 0\\[2mm]
+		0 & 0 & \sigma_\epsilon^2\,\Delta t\,I_M
+	\end{pmatrix}.
+	\end{equation}
+	
+\subsubsection{H-matrix}
+	Recall that the measurement equation is
+		\begin{equation}
+	\delta t = \frac{\delta\phi}{f_0} + \boldsymbol{M}\,\boldsymbol{\delta\epsilon} - r.
+		\end{equation}
+	Since the state vector is
+	\begin{equation}
+	\boldsymbol{X} = \begin{pmatrix}
+		\delta\phi \\ \delta f \\ r \\ a \\ \delta\epsilon_1 \\ \vdots \\ \delta\epsilon_M
+	\end{pmatrix},
+		\end{equation}
+	the measurement depends only on $\delta\phi$, $r$, and the $\delta\epsilon_m$. Therefore, the measurement matrix is
+		\begin{equation}
+	\boldsymbol{H} = \begin{pmatrix}
+		\frac{1}{f_0} & 0 & -1 & 0 & M_1 & \cdots & M_M
+	\end{pmatrix},
+		\end{equation}
+	so that
+		\begin{equation}
+	\delta t = \boldsymbol{H}\,\boldsymbol{X}.
+		\end{equation}
+	
+\subsubsection{R-matrix}
+	Assuming the measurement noise is white with variance $\sigma_t^2$, and given that there is a single measurement per time step, we have
+	\begin{equation}
+	\boldsymbol{R} = \sigma_t^2.
+	\end{equation}
+
+	
+
+
+\section{Multiple pulsars}
+
+The formulation in Section \ref{sec:single_pulsar} extends straightforwardly to multiple pulsars. There are two complications which must be handled with care.
+
+\begin{enumerate}
+	\item The covariance between the $a^{(n)}$ terms for different pulsars. This is the Hellings-Downs effect.
+	\item The fact that in general all pulsars are observed at different times. This means that instead of having a nice observation vector $\mathbf{Y}$ of length $N$, in general we just have a single observation from a single pulsar at a given timestep. 
+\end{enumerate}
+
+
+\noindent Regarding (1), the ensemble statistics of $\chi_{\mathrm a}^{(n)}$ are
+\begin{align}
+	\langle \chi^{(n)}_{\mathrm a}(t) \rangle &= 0 \ , 	\label{eq:xieqn1} \\
+	\langle \chi^{(n)}_{\mathrm a}(t) \, \chi^{(n')}_{\mathrm a}(t') \rangle &= \left[\sigma^{(n,n')}_{\mathrm a}\right]^2 \delta(t - t') \ .	\label{eq:xieqn2}
+\end{align}
+with
+\begin{eqnarray}
+	\left[\sigma^{(n,n')}_{\mathrm a}\right]^2 = \frac{\langle h^2\rangle}{6} \gamma_{\mathrm a} \, \Gamma \left[ \theta^{(n,n')} \right] \, , \label{eq:sigma_a_expression}
+\end{eqnarray}
+where $\langle h^2 \rangle$ is the mean square GW strain from the $M$ summed sources at the Earth's position, $\theta^{(n,n')}$ is the angle between the $n$-th and $n'$-th pulsars, and one has
+\begin{eqnarray}
+	\Gamma\left[\theta^{(n,n')} \right] =  \frac{3}{2} x_{n n'} \ln x_{n n'}  -\frac{x_{n n'} }{4}+\frac{1}{2} + \frac{1}{2} \delta_{n n'}\label{eq:correlation} \, ,
+\end{eqnarray}
+with $x_{nn'} = \left[1 - \cos \theta^{(n,n')}\right]/2$. 
+
+
+
+\subsection{Discretisation for multiple pulsars}
+	
+	For $N$ pulsars, we define the stacked state vector
+	\begin{equation}
+		\boldsymbol{X} = \begin{pmatrix}
+			\boldsymbol{X}^{(1)} \\
+			\boldsymbol{X}^{(2)} \\
+			\vdots \\
+			\boldsymbol{X}^{(N)}
+		\end{pmatrix}, \qquad \text{with} \qquad
+		\boldsymbol{X}^{(n)} = \begin{pmatrix}
+			\delta \phi^{(n)}\\[1mm]
+			\delta f^{(n)}\\[1mm]
+			r^{(n)}\\[1mm]
+			a^{(n)}\\[1mm]
+			\delta\epsilon_1^{(n)}\\[1mm]
+			\vdots\\[1mm]
+			\delta\epsilon_{M^{(n)}}^{(n)}
+		\end{pmatrix}.
+	\end{equation}
+	The state evolution is as in the single--pulsar case, except that the gravitational-wave noise processes $\chi_a^{(n)}(t)$ are correlated among pulsars. Their ensemble statistics are
+	\begin{equation}
+		\langle \chi_a^{(n)}(t) \rangle = 0,
+	\end{equation}
+	\begin{equation}
+		\langle \chi_a^{(n)}(t)\,\chi_a^{(n')}(t') \rangle = \left[\sigma_a^{(n,n')}\right]^2\,\delta(t-t'),
+	\end{equation}
+	with
+	\begin{equation}
+		\left[\sigma_a^{(n,n')}\right]^2 = \frac{\langle h^2 \rangle}{6}\,\gamma_a\,\Gamma\bigl[\theta^{(n,n')}\bigr],
+	\end{equation}
+	and
+	\begin{equation}
+		\Gamma\bigl[\theta^{(n,n')}\bigr] = \frac{3}{2}x_{nn'}\ln x_{nn'} - \frac{x_{nn'}}{4} + \frac{1}{2} + \frac{1}{2}\delta_{nn'}, \qquad x_{nn'}=\frac{1-\cos\theta^{(n,n')}}{2}\,.
+	\end{equation}
+	
+	\subsection*{1. Discretised State Transition Matrix (\(\boldsymbol{F}\))}
+	
+	For pulsar $n$, the \((\delta\phi,\delta f)\) block discretises as
+	\begin{equation}
+		F_p^{(n)} = \begin{pmatrix}
+			1 & \dfrac{1-e^{-\gamma_p^{(n)}\Delta t}}{\gamma_p^{(n)}} \\[1mm]
+			0 & e^{-\gamma_p^{(n)}\Delta t}
+		\end{pmatrix},
+	\end{equation}
+	and the \((r,a)\) block is
+	\begin{equation}
+		F_a = \begin{pmatrix}
+			1 & \dfrac{1-e^{-\gamma_a\Delta t}}{\gamma_a} \\[1mm]
+			0 & e^{-\gamma_a\Delta t}
+		\end{pmatrix},
+	\end{equation}
+	(with the same gravitational–wave damping rate $\gamma_a$ assumed for all pulsars). The timing model parameters evolve by the identity. Hence, the state transition matrix for pulsar $n$ is
+	\begin{equation}
+		F^{(n)} = \begin{pmatrix}
+			F_p^{(n)} & 0 & 0\\[2mm]
+			0 & F_a & 0\\[2mm]
+			0 & 0 & I_{M^{(n)}}
+		\end{pmatrix}.
+	\end{equation}
+	Stacking the pulsar states, the overall state transition matrix is block diagonal:
+	\begin{equation}
+		\boldsymbol{F} = \mathrm{diag}\Bigl\{F^{(1)},F^{(2)},\ldots,F^{(N)}\Bigr\}\,.
+	\end{equation}
+	
+	\subsection*{2. Discretised Process Noise Covariance (\(\boldsymbol{Q}\))}
+	
+	For pulsar $n$, the \((\delta\phi,\delta f)\) block has the discretised covariance
+	\begin{equation}
+		Q_p^{(n)} = \sigma_p^{(n)2}\begin{pmatrix}
+			\displaystyle \frac{\Delta t}{\gamma_p^{(n)2}} - \frac{2\left(1-e^{-\gamma_p^{(n)}\Delta t}\right)}{\gamma_p^{(n)3}} + \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)3}} & \displaystyle \frac{1-e^{-\gamma_p^{(n)}\Delta t}}{\gamma_p^{(n)2}} - \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)2}}\\[2mm]
+			\displaystyle \frac{1-e^{-\gamma_p^{(n)}\Delta t}}{\gamma_p^{(n)2}} - \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)2}} & \displaystyle \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)}}
+		\end{pmatrix}.
+	\end{equation}
+	For the gravitational--wave (or \(a\)) block, note that the continuous noise processes are correlated among different pulsars. Thus, the cross–covariance between pulsars $n$ and $n'$ is discretised as
+	\begin{equation}
+		Q_a^{(n,n')} = \left[\sigma_a^{(n,n')}\right]^2\begin{pmatrix}
+			\displaystyle \frac{\Delta t}{\gamma_a^2} - \frac{2\left(1-e^{-\gamma_a\Delta t}\right)}{\gamma_a^3} + \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^3} & \displaystyle \frac{1-e^{-\gamma_a\Delta t}}{\gamma_a^2} - \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^2}\\[2mm]
+			\displaystyle \frac{1-e^{-\gamma_a\Delta t}}{\gamma_a^2} - \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^2} & \displaystyle \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a}
+		\end{pmatrix}.
+	\end{equation}
+	For the timing model parameters of pulsar $n$, modeled as a random walk,
+	\begin{equation}
+		Q_\epsilon^{(n)} = \sigma_\epsilon^2\,\Delta t\,I_{M^{(n)}}.
+	\end{equation}
+	
+	The block coupling pulsars $n$ and $n'$ is then assembled as
+	\begin{equation}
+		\boldsymbol{Q}^{(n,n')} = \begin{pmatrix}
+			\delta_{nn'}\, Q_p^{(n)} & 0 & 0 \\[2mm]
+			0 & Q_a^{(n,n')} & 0 \\[2mm]
+			0 & 0 & \delta_{nn'}\, Q_\epsilon^{(n)}
+		\end{pmatrix},
+	\end{equation}
+	where $\delta_{nn'}$ is the Kronecker delta (i.e. the spin and timing noise are uncorrelated between different pulsars). Finally, the full process noise covariance is the block matrix
+	\begin{equation}
+		\boldsymbol{Q} = \begin{pmatrix}
+			\boldsymbol{Q}^{(1,1)} & \boldsymbol{Q}^{(1,2)} & \cdots & \boldsymbol{Q}^{(1,N)} \\[1mm]
+			\boldsymbol{Q}^{(2,1)} & \boldsymbol{Q}^{(2,2)} & \cdots & \boldsymbol{Q}^{(2,N)} \\[1mm]
+			\vdots & \vdots & \ddots & \vdots \\[1mm]
+			\boldsymbol{Q}^{(N,1)} & \boldsymbol{Q}^{(N,2)} & \cdots & \boldsymbol{Q}^{(N,N)}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	\subsection*{3. Measurement Matrix (\(\boldsymbol{H}\))}
+	
+	For pulsar $n$, the measurement equation is
+	\begin{equation}
+		\delta t^{(n)} = \frac{\delta\phi^{(n)}}{f_0^{(n)}} + \boldsymbol{M}^{(n)}\,\boldsymbol{\delta\epsilon}^{(n)} - r^{(n)}\,,
+	\end{equation}
+	so that the measurement matrix is
+	\begin{equation}
+		\boldsymbol{H}^{(n)} = \begin{pmatrix}
+			\frac{1}{f_0^{(n)}} & 0 & -1 & 0 & M_1^{(n)} & \cdots & M_{M^{(n)}}^{(n)}
+		\end{pmatrix}\,.
+	\end{equation}
+	In a multi–pulsar analysis the overall measurement vector $\boldsymbol{Y}$ is built by stacking the individual measurements. In practice, since pulsars are generally observed at different times, only a subset of the pulsars contribute at any given time; the full measurement matrix is then formed by selecting the corresponding rows from the block–diagonal matrix
+	\begin{equation}
+		\boldsymbol{H}_{\mathrm{full}} = \mathrm{diag}\Bigl\{\boldsymbol{H}^{(1)},\boldsymbol{H}^{(2)},\ldots,\boldsymbol{H}^{(N)}\Bigr\}\,.
+	\end{equation}
+	
+	\subsection*{4. Measurement Noise Covariance (\(\boldsymbol{R}\))}
+	
+	Assuming that the measurement noise for pulsar $n$ is white with variance $\sigma_t^{(n)2}$ and that different pulsars have independent measurement noise, then if at a given time step the set of observed pulsars is $\mathcal{O}\subset\{1,\ldots,N\}$, the measurement noise covariance is
+	\begin{equation}
+		\boldsymbol{R} = \mathrm{diag}\Bigl\{\sigma_t^{(n)2}\Bigr\}_{n\in\mathcal{O}}\,.
+	\end{equation}
+
+
+	
+%\section{additional notes}
+%
+%It may help the coding if we reorder some things...
+%
+%\section{Pipeline}
+%
+%\begin{enumerate}
+%	\item Obtain a .par and .tim file for a pulsar
+%	\item Pass these files through TEMPO/PINT to obtain timing resiudals $\delta t$, and a design matrix $\mathbf{M}$.
+%\end{enumerate}
+%
+%\section{Dispersion and multiband}
+%
+%all of the above assumes wideband
+
+
+\newpage
+\appendix
+\section{A worked example for the Q-matrix}
+
+
+It can help intution to "see" what the Q-matrix looks like explicitly. Consider the case where $N=2$. \newline 
+
+
+
+	Recall that for each pulsar the state vector is partitioned into three sectors:
+	\begin{enumerate}
+		\item \textbf{Spin noise sector} (for \(\delta\phi\) and \(\delta f\)): a \(2\times2\) block.
+		\item \textbf{Gravitational--wave (redshift/residual) sector} (for \(r\) and \(a\)): a \(2\times2\) block.
+		\item \textbf{Timing model (design matrix) sector} (for \(\delta\epsilon\)): a block of size \(M^{(n)}\times M^{(n)}\).
+	\end{enumerate}
+	
+	For pulsar \(n\) (\(n=1,2\)), the individual blocks are defined as follows:
+	
+	\subsection*{Spin Noise Sector}
+	
+	For pulsar \(n\), the discretised spin noise covariance is
+	\begin{equation}
+		Q_p^{(n)} = \sigma_p^{(n)2}
+		\begin{pmatrix}
+			\displaystyle \frac{\Delta t}{\gamma_p^{(n)2}} - \frac{2\bigl(1-e^{-\gamma_p^{(n)}\Delta t}\bigr)}{\gamma_p^{(n)3}} + \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)3}} 
+			& \displaystyle \frac{1-e^{-\gamma_p^{(n)}\Delta t}}{\gamma_p^{(n)2}} - \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)2}} \\[2mm]
+			\displaystyle \frac{1-e^{-\gamma_p^{(n)}\Delta t}}{\gamma_p^{(n)2}} - \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)2}} 
+			& \displaystyle \frac{1-e^{-2\gamma_p^{(n)}\Delta t}}{2\gamma_p^{(n)}}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	\subsection*{Gravitational--Wave Sector}
+	
+	For the gravitational--wave noise, the continuous noise processes \(\chi_a^{(n)}(t)\) are correlated among pulsars. Thus, for pulsars \(n\) and \(n'\) the discretised covariance is given by:
+	\begin{equation}
+		Q_a^{(n,n')} = \left[\sigma_a^{(n,n')}\right]^2
+		\begin{pmatrix}
+			\displaystyle \frac{\Delta t}{\gamma_a^2} - \frac{2\bigl(1-e^{-\gamma_a\Delta t}\bigr)}{\gamma_a^3} + \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^3} 
+			& \displaystyle \frac{1-e^{-\gamma_a\Delta t}}{\gamma_a^2} - \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^2} \\[2mm]
+			\displaystyle \frac{1-e^{-\gamma_a\Delta t}}{\gamma_a^2} - \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a^2} 
+			& \displaystyle \frac{1-e^{-2\gamma_a\Delta t}}{2\gamma_a}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	For the \textbf{autocovariance} (i.e. \(n=n'\)) we denote this as \(Q_a^{(n,n)}\), and for the \textbf{cross-covariance} (i.e. \(n \neq n'\)) we have
+	\[
+	Q_a^{(1,2)} = Q_a^{(2,1)}.
+	\]
+	
+	\subsection*{Timing Model Sector}
+	
+	For pulsar \(n\), the timing model parameters are assumed to follow a random walk. Their covariance is given by
+	\begin{equation}
+		Q_\epsilon^{(n)} = \sigma_\epsilon^2\,\Delta t\,I_{M^{(n)}},
+	\end{equation}
+	where \(I_{M^{(n)}}\) is the identity matrix of dimension \(M^{(n)}\).
+	
+	\subsection*{Constructing the Full \(\boldsymbol{Q}\) Matrix for Two Pulsars}
+	
+	For two pulsars (\(N=2\)), we construct the overall process noise covariance matrix \(\boldsymbol{Q}\) as a \(2\times2\) block matrix:
+	\begin{equation}
+		\boldsymbol{Q} =
+		\begin{pmatrix}
+			\boldsymbol{Q}^{(1,1)} & \boldsymbol{Q}^{(1,2)} \\[1mm]
+			\boldsymbol{Q}^{(2,1)} & \boldsymbol{Q}^{(2,2)}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	Each block \(\boldsymbol{Q}^{(n,n')}\) is itself block–structured into three sectors (spin noise, gravitational–wave noise, and timing model noise).
+	
+	\subsubsection*{Diagonal Block for Pulsar 1 (\(\boldsymbol{Q}^{(1,1)}\))}
+	
+	\begin{equation}
+		\boldsymbol{Q}^{(1,1)} =
+		\begin{pmatrix}
+			Q_p^{(1)} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(1)}} \\[2mm]
+			\boldsymbol{0}_{2\times2} & Q_a^{(1,1)} & \boldsymbol{0}_{2\times M^{(1)}} \\[2mm]
+			\boldsymbol{0}_{M^{(1)}\times2} & \boldsymbol{0}_{M^{(1)}\times2} & Q_\epsilon^{(1)}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	Here:
+	\begin{itemize}
+		\item The upper-left \(2\times2\) block is \(Q_p^{(1)}\) (spin noise for pulsar 1).
+		\item The middle \(2\times2\) block is \(Q_a^{(1,1)}\) (gravitational–wave autocovariance for pulsar 1).
+		\item The lower-right \(M^{(1)}\times M^{(1)}\) block is \(Q_\epsilon^{(1)}\) (timing model noise for pulsar 1).
+	\end{itemize}
+	
+	\subsubsection*{Diagonal Block for Pulsar 2 (\(\boldsymbol{Q}^{(2,2)}\))}
+	
+	\begin{equation}
+		\boldsymbol{Q}^{(2,2)} =
+		\begin{pmatrix}
+			Q_p^{(2)} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(2)}} \\[2mm]
+			\boldsymbol{0}_{2\times2} & Q_a^{(2,2)} & \boldsymbol{0}_{2\times M^{(2)}} \\[2mm]
+			\boldsymbol{0}_{M^{(2)}\times2} & \boldsymbol{0}_{M^{(2)}\times2} & Q_\epsilon^{(2)}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	Here:
+	\begin{itemize}
+		\item The upper-left \(2\times2\) block is \(Q_p^{(2)}\) (spin noise for pulsar 2).
+		\item The middle \(2\times2\) block is \(Q_a^{(2,2)}\) (gravitational–wave autocovariance for pulsar 2).
+		\item The lower-right \(M^{(2)}\times M^{(2)}\) block is \(Q_\epsilon^{(2)}\) (timing model noise for pulsar 2).
+	\end{itemize}
+	
+	\subsubsection*{Off-Diagonal Block Between Pulsar 1 and Pulsar 2 (\(\boldsymbol{Q}^{(1,2)}\))}
+	
+	\begin{equation}
+		\boldsymbol{Q}^{(1,2)} =
+		\begin{pmatrix}
+			\boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(2)}} \\[2mm]
+			\boldsymbol{0}_{2\times2} & Q_a^{(1,2)} & \boldsymbol{0}_{2\times M^{(2)}} \\[2mm]
+			\boldsymbol{0}_{M^{(1)}\times2} & \boldsymbol{0}_{M^{(1)}\times2} & \boldsymbol{0}_{M^{(1)}\times M^{(2)}}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	In this off-diagonal block:
+	\begin{itemize}
+		\item The spin noise sectors (upper-left \(2\times2\)) are zero because spin noise is uncorrelated between pulsars.
+		\item The timing model sectors are zero.
+		\item Only the gravitational–wave sector (the middle \(2\times2\) block) is nonzero and given by \(Q_a^{(1,2)}\).
+	\end{itemize}
+	
+	\subsubsection*{Off-Diagonal Block Between Pulsar 2 and Pulsar 1 (\(\boldsymbol{Q}^{(2,1)}\))}
+	
+	By symmetry (assuming the cross–covariance is symmetric), we have
+	\begin{equation}
+		\boldsymbol{Q}^{(2,1)} =
+		\begin{pmatrix}
+			\boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(1)}} \\[2mm]
+			\boldsymbol{0}_{2\times2} & Q_a^{(2,1)} & \boldsymbol{0}_{2\times M^{(1)}} \\[2mm]
+			\boldsymbol{0}_{M^{(2)}\times2} & \boldsymbol{0}_{M^{(2)}\times2} & \boldsymbol{0}_{M^{(2)}\times M^{(1)}}
+		\end{pmatrix}\,,
+	\end{equation}
+	with \(Q_a^{(2,1)} = Q_a^{(1,2)}\).
+	
+	\subsection*{Full \(\boldsymbol{Q}\) Matrix for \(N=2\)}
+	
+	Assembling the blocks, the full \( \boldsymbol{Q} \) matrix is given by
+	\begin{equation}
+		\boldsymbol{Q} =
+		\begin{pmatrix}
+			\begin{array}{c|c}
+				\begin{array}{ccc}
+					Q_p^{(1)} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(1)}}
+					\\[2mm]
+					\boldsymbol{0}_{2\times2} & Q_a^{(1,1)} & \boldsymbol{0}_{2\times M^{(1)}}
+					\\[2mm]
+					\boldsymbol{0}_{M^{(1)}\times2} & \boldsymbol{0}_{M^{(1)}\times2} & Q_\epsilon^{(1)}
+				\end{array}
+				& 
+				\begin{array}{ccc}
+					\boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(2)}
+					}\\[2mm]
+					\boldsymbol{0}_{2\times2} & Q_a^{(1,2)} & \boldsymbol{0}_{2\times M^{(2)}
+					}\\[2mm]
+					\boldsymbol{0}_{M^{(1)}\times2} & \boldsymbol{0}_{M^{(1)}\times2} & \boldsymbol{0}_{M^{(1)}\times M^{(2)}
+					}
+				\end{array}
+				\\[4mm]
+				\hline \\[-3mm]
+				\begin{array}{ccc}
+					\boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(1)}
+					}\\[2mm]
+					\boldsymbol{0}_{2\times2} & Q_a^{(2,1)} & \boldsymbol{0}_{2\times M^{(1)}
+					}\\[2mm]
+					\boldsymbol{0}_{M^{(2)}\times2} & \boldsymbol{0}_{M^{(2)}\times2} & \boldsymbol{0}_{M^{(2)}\times M^{(1)}
+					}
+				\end{array}
+				&
+				\begin{array}{ccc}
+					Q_p^{(2)} & \boldsymbol{0}_{2\times2} & \boldsymbol{0}_{2\times M^{(2)}
+					}\\[2mm]
+					\boldsymbol{0}_{2\times2} & Q_a^{(2,2)} & \boldsymbol{0}_{2\times M^{(2)}
+					}\\[2mm]
+					\boldsymbol{0}_{M^{(2)}\times2} & \boldsymbol{0}_{M^{(2)}\times2} & Q_\epsilon^{(2)}
+				\end{array}
+			\end{array}
+		\end{pmatrix}\,.
+	\end{equation}
+	
+	\textbf{Component Summary:}
+	\begin{itemize}
+		\item \(\boldsymbol{Q}^{(1,1)}\) (Pulsar 1):
+		\begin{itemize}
+			\item \textbf{Spin noise:} \(Q_p^{(1)}\) (upper-left \(2\times2\))
+			\item \textbf{Gravitational--wave noise:} \(Q_a^{(1,1)}\) (middle \(2\times2\))
+			\item \textbf{Timing model noise:} \(Q_\epsilon^{(1)}\) (lower-right \(M^{(1)}\times M^{(1)}\))
+		\end{itemize}
+		\item \(\boldsymbol{Q}^{(2,2)}\) (Pulsar 2):
+		\begin{itemize}
+			\item \textbf{Spin noise:} \(Q_p^{(2)}\)
+			\item \textbf{Gravitational--wave noise:} \(Q_a^{(2,2)}\)
+			\item \textbf{Timing model noise:} \(Q_\epsilon^{(2)}\)
+		\end{itemize}
+		\item \(\boldsymbol{Q}^{(1,2)}\) (Between Pulsar 1 and Pulsar 2):
+		\begin{itemize}
+			\item \textbf{Spin noise:} Zero (\(2\times2\) zero matrix)
+			\item \textbf{Gravitational--wave noise:} \(Q_a^{(1,2)}\) (middle \(2\times2\))
+			\item \textbf{Timing model noise:} Zero
+		\end{itemize}
+		\item \(\boldsymbol{Q}^{(2,1)}\) (Between Pulsar 2 and Pulsar 1):
+		\begin{itemize}
+			\item \textbf{Spin noise:} Zero
+			\item \textbf{Gravitational--wave noise:} \(Q_a^{(2,1)}\) (which equals \(Q_a^{(1,2)}\))
+			\item \textbf{Timing model noise:} Zero
+		\end{itemize}
+	\end{itemize}
+	
+	This explicit layout shows how the overall \( \boldsymbol{Q} \) matrix incorporates:
+	\begin{itemize}
+		\item The individual (uncorrelated) spin noise and timing model noise (appearing in the diagonal blocks).
+		\item The cross–correlations due to the gravitational--wave background (appearing in the off-diagonal blocks).
+	\end{itemize}
+	
+
+
 
 \end{document}
