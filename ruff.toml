@@ -42,7 +42,7 @@ target-version = "py38"
 [lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["E4", "E7", "E9", "F","D"]
-ignore = ["D203","D213"] #Manually ignore incompatible rules
+ignore = ["D203","D213","E731"] #Manually ignore incompatible rules. Also enable lambda functions, E731
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
