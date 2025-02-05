@@ -95,11 +95,10 @@ class LoadWidebandPulsarData:
             raise
 
     @classmethod
-    def read_multiple_par_tim(cls,
-                              par_files: list[str],
-                              tim_files: list[str],
-                              max_files: int | None = None
-                              ) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
+    def read_multiple_par_tim(cls, par_files: list[str], 
+                              tim_files: list[str], 
+                              max_files: int | None = None, 
+                              **kwargs) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
         """
         Load multiple par/tim file pairs, merge their TOAs/residuals into a DataFrame,
         and collect metadata (pulsar name, RA, DEC, etc.) in a second DataFrame.
@@ -132,6 +131,8 @@ class LoadWidebandPulsarData:
             - RA is treated as the azimuth (φ).
             - DEC is converted to co-latitude: θ = π/2 − DEC.
         """
+
+
         # Combine the par and tim files into pairs; optionally limit to max_files.
         file_pairs = list(zip(par_files, tim_files))
         if max_files is not None:
@@ -141,7 +142,7 @@ class LoadWidebandPulsarData:
         dfs_meta = [] # List to hold individual pulsar metadata DataFrames.
 
         for i, (par_file, tim_file) in enumerate(file_pairs):
-            psr = cls.read_par_tim(par_file, tim_file)
+            psr = cls.read_par_tim(par_file, tim_file,**kwargs)
 
             # DataFrame for TOAs and residuals for this pulsar.
             df = pd.DataFrame({
