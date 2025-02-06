@@ -28,6 +28,9 @@ class KalmanFilter:
         self.P0 = P0
 
 
+        self.N_timesteps = len(self.observations)
+
+
 
 
     def _scalar_log_likelihood(self,y,cov): #make this proper, cf OOP
@@ -43,7 +46,7 @@ class KalmanFilter:
 
     def predict(self):
         """Predict the next state and covariance."""
-        self.x = self.model.F @ self.x + self.model.B @ self.model.u
+        self.x = self.model.F @ self.x #+ self.model.B @ self.model.u
         self.P = self.model.F @ self.P @ self.model.F.T + self.model.Q
 
     def update(self, z):
@@ -92,11 +95,23 @@ class KalmanFilter:
         #Do the first update step
         psr_index = int(self.observations[i,2])
         self.H = self.model.H_matrix(psr_index)
-        print("The puslar index is:", psr_index)
-        print("setting H matrix accordingly")
-        print(self.H)
         self.update(self.observations[i,1]) # x,P,likelihood_value 
 
+        print("Number of observations is:", self.N_timesteps)
+        for i in range(1,self.N_obs): #we have already done i=0
+
+
+            #Predict step
+            x_predict, P_predict             = self.predict()                                        # The predict step
+            
+            #Update step
+            
+            
+
+            # psr_index = int(self.observations[i,2])
+            # self.H = self.model.H_matrix(psr_index)
+            # self.update(self.observations[i,1]) # x,P,likelihood_value 
+            
 
 
         # for z in self.observations:
