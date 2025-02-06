@@ -23,28 +23,103 @@ class KalmanFilter:
     def __init__(self, model, observations, x0, P0, **kwargs):
         """Initialize the class."""
         self.model = model
-        self.observations = observations
-        self.x = x0
-        self.P = P0
+        self.observations = observations # convert the input pandas df to a numpy array. # t, residual, psr
+        self.x0 = x0
+        self.P0 = P0
+
+
+        self.N_timesteps = len(self.observations)
+
+
+
+
+    def _scalar_log_likelihood(self,y,cov): #make this proper, cf OOP
+        """
+        Given the innovation and innovation covariance, get the likelihood.
+        """
+        # N = len(y)
+        # sign, log_det = np.linalg.slogdet(cov)
+        # ll = -0.5 * (log_det + np.dot(y.T, np.linalg.solve(cov, y))+ N*np.log(2 * np.pi))
+        # return ll
+        return -0.5 * (np.log(2.0 * np.pi * cov) +(y * y) / cov) 
+
 
     def predict(self):
         """Predict the next state and covariance."""
-        self.x = self.model.F @ self.x + self.model.B @ self.model.u
+        self.x = self.model.F @ self.x #+ self.model.B @ self.model.u
         self.P = self.model.F @ self.P @ self.model.F.T + self.model.Q
 
     def update(self, z):
         """Update the state and covariance with a new observation."""
-        y = z - self.model.H @ self.x
-        S = self.model.H @ self.P @ self.model.H.T + self.model.R
-        K = self.P @ self.model.H.T @ np.linalg.inv(S)
-        self.x = self.x + K @ y
-        self.P = (np.eye(len(self.x)) - K @ self.model.H) @ self.P
 
-    def run(self):
-        """Run the Kalman filter algorithm over all observations."""
-        for z in self.observations:
-            self.predict()
-            self.update(z)
+        #Note, our observations are always just a scalar. 
+        #Accordingly, y and S are both scalars
+
+
+        y = z - self.H @ self.x
+        print("Getting S")
+        S = self.H @ self.P @ self.H.T + self.model.R_matrix()
+
+
+
+        #K = self.P @ self.H.T @ np.linalg.inv(S)
+        print("Getting K")
+        K = self.P @ self.H.T / S # because S is a scalar
+
+        print("Update X", self.x.shape,K.shape, y.shape)
+        #self.x = self.x + K @ y
+        self.x = self.x + K * y # because observation is a scalar
+        print("update P")
+        self.P = (np.eye(len(self.x)) - K @ self.H) @ self.P
+        print("completed P")
+        print("get likelihood")
+        self.ll += self._scalar_log_likelihood(y,S)
+
+
+    def get_likelihood(self,θ):
+        """Run the Kalman filter algorithm over all observations and return a log likelihood"""
+
+        #Define all the free parameters for the model. Note this exludes dt, which is not a parameter we need to infer.
+        self.model.set_global_parameters(θ) 
+
+
+        #Define the R matrix. Is this the best place for this? Are there residual errors we need to read in? probably...
+        self.R = self.model.R_matrix()
+
+  
+        #Initialise x and P, the likelihood, and the index i
+        self.x,self.P,self.ll,i = self.x0,self.P0,0.0,int(0)  
+ 
+
+      
+        #Do the first update step
+        psr_index = int(self.observations[i,2])
+        self.H = self.model.H_matrix(psr_index)
+        self.update(self.observations[i,1]) # x,P,likelihood_value 
+
+        print("Number of observations is:", self.N_timesteps)
+        for i in range(1,self.N_obs): #we have already done i=0
+
+
+            #Predict step
+            x_predict, P_predict             = self.predict()                                        # The predict step
+            
+            #Update step
+            
+            
+
+            # psr_index = int(self.observations[i,2])
+            # self.H = self.model.H_matrix(psr_index)
+            # self.update(self.observations[i,1]) # x,P,likelihood_value 
+            
+
+
+        # for z in self.observations:
+        #     self.predict()
+        #     self.update(z)
+
+
+
 
 
 
